@@ -9,7 +9,11 @@ from manageserver import Server,start_server,stop_server
 import sys
 
 
-
+#Necessary:
+#dotenv:#
+#### pip install python-dotenv ####
+#pycord (with support of new features like slash_command,etc):#
+#### python3 -m pip install -U py-cord --pre ####
 
 # Load TOKEN
 load_dotenv()
@@ -58,7 +62,10 @@ async def on_message(message: Message) -> None:
     print(f"[{channel}] {username} said:'{user_message}'")
         
     await send_message(message,user_message)
-    
+
+#Slash commands
+
+#Command to start/stop server
 #ServerTypes can be found in manageserver
 @bot.slash_command(description="Start a running Server")
 async def startserver(ctx, server: Server):
@@ -70,6 +77,8 @@ async def stopserver(ctx, server: Server):
     stop_server(server)
     await ctx.respond(f"{server} wurde gestopt!")
 
+
+#Command to kill the bot if necessary
 @bot.slash_command(description="Stop the bot")
 async def killbot(ctx):
     await ctx.respond(f"Bot wurde beendet!")
