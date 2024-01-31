@@ -5,15 +5,14 @@ import discord
 from discord import Bot, Message ,Intents
 from discord.commands import Option
 from responses import get_response
-from manageserver import Server,start_server,stop_server
 import sys
 
 
 #Necessary:
 #dotenv:#
-#### pip install python-dotenv ####
+## pip install python-dotenv ##
 #pycord (with support of new features like slash_command,etc):#
-#### python3 -m pip install -U py-cord --pre ####
+## python3 -m pip install -U py-cord --pre ##
 
 # Load TOKEN
 load_dotenv()
@@ -21,6 +20,7 @@ TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
 
 # Bot Setup
 intents:Intents = Intents.default()
+intents.members = True
 intents.message_content = True
 bot: Bot = Bot(intents=intents)
 
@@ -62,20 +62,12 @@ async def on_message(message: Message) -> None:
     print(f"[{channel}] {username} said:'{user_message}'")
         
     await send_message(message,user_message)
-
-#Slash commands
-
-#Command to start/stop server
-#ServerTypes can be found in manageserver
-@bot.slash_command(description="Start a running Server")
-async def startserver(ctx, server: Server):
-    start_server(server)
-    await ctx.respond(f"{server} wurde gestartet!")
     
-@bot.slash_command(description="Stop a running server")
-async def stopserver(ctx, server: Server):
-    stop_server(server)
-    await ctx.respond(f"{server} wurde gestopt!")
+#Slash commands are seperated in responding cogs
+#Include Cogs
+for filename in os.listdir("cogs"):
+    if filename.endswith(".py"):
+        bot.load_extension(f"cogs.{filename[:-3]}")
 
 
 #Command to kill the bot if necessary
