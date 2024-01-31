@@ -1,11 +1,14 @@
 from typing import Final
 import os
+import sys
 from dotenv import load_dotenv
 import discord
+import discord.commands
 from discord import Bot, Message ,Intents
 from discord.commands import Option
+from discord.ext import commands
 from responses import get_response
-import sys
+
 
 
 #Necessary:
@@ -72,6 +75,7 @@ for filename in os.listdir("cogs"):
 
 #Command to kill the bot if necessary
 @bot.slash_command(description="Stop the bot")
+@commands.is_owner()
 async def killbot(ctx):
     await ctx.respond(f"Bot wurde beendet!")
     sys.exit()
