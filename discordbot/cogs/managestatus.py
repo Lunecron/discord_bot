@@ -13,6 +13,7 @@ class Status(commands.Cog):
     
     #Set the activity of the bot
     @commands.slash_command(description="Change Activity")
+    @discord.default_permissions(administrator=True)
     async def setactivity(self, ctx, type: Option(str, choices=["clear","game","streaming","listening","watching","custom","competing"],required = True), name: Option(str,required = False,default = '') , url: Option(str,required = False, default = '')) -> None:
         if type == "clear":
             act = discord.Game(name='')
@@ -48,6 +49,7 @@ class Status(commands.Cog):
     
     #Set the status of the bot
     @commands.slash_command(description="Change bot status")
+    @discord.default_permissions(administrator=True)
     async def setstatus(self, ctx, type: Option(str, choices=["online","idle","dnd"],required = True)) ->None:
         if type == "online":
             status = discord.Status.online

@@ -15,12 +15,14 @@ class Server(commands.Cog):
         self.bot = bot
     
     @commands.slash_command(description="Start a running Server")
+    @discord.default_permissions(administrator=True)
     async def startserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
         if start_server(server):
             await ctx.respond(f"{server} wurde gestartet!")
         else:
             await ctx.respond(f"{server} konnte nicht gestartet werden!")
 
+    @discord.default_permissions(administrator=True)
     @commands.slash_command(description="Stop a running server")
     async def stopserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
         if stop_server(server):

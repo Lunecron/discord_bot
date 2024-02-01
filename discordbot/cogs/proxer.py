@@ -102,7 +102,7 @@ class Proxer(commands.Cog):
                         
                         if mangadex_response.status_code == 200:
                             mangadex_data = mangadex_response.json()["data"]
-                            manga_info = mangadex_data[0]
+                            manga_info = mangadex_data[0] if mangadex_data else None
                             if manga_info:
                                 id = manga_info['id']
                                 cover_id = [rel['id'] for rel in manga_info['relationships'] if rel.get('type') == 'cover_art'][0]
@@ -114,7 +114,7 @@ class Proxer(commands.Cog):
                                    
                                 if mangadex_response_cover.status_code == 200:
                                     manga_cover_filename = mangadex_response_cover.json()["data"]['attributes']['fileName']
-                                    cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}"
+                                    cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}.512.jpg"
                                     temp_filename = change_filename_ending(temp_filename,cover_image_url)
                                     if download_image(cover_image_url, temp_filename):
                                         print("Thumbnail downloaded")
@@ -130,7 +130,7 @@ class Proxer(commands.Cog):
                                     if mangadex_response_cover.status_code == 200:
                                         mangadex_data = mangadex_response_cover.json()["data"]
                                         manga_cover_filename = [rel['attributes']['fileName'] for rel in mangadex_data['relationships'] if rel.get('type') == 'cover_art'][0]
-                                        cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}"
+                                        cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}.512.jpg"
                                         temp_filename = change_filename_ending(temp_filename,cover_image_url)
                                         if download_image(cover_image_url, temp_filename):
                                             print("Thumbnail downloaded")
@@ -164,7 +164,7 @@ class Proxer(commands.Cog):
                                     embed = discord.Embed(title=title, description=description, color=0x7289da,url=f'https://mangadex.org/manga/{id}')
                                     embed.add_field(name="Typ", value=str(series_type), inline=False)
                                     embed.add_field(name="Alt Title", value=alt_title, inline=False)
-                                    embed.set_thumbnail(url='attachment://temp.jpg')
+                                    embed.set_thumbnail(url=f'attachment://{temp_filename}')
                                     await message.channel.send(file=file,embed = embed)
                                     #Prevent deleting no_cover.jpg
                                     if temp_filename != "no_cover.jpg":
