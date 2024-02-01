@@ -52,19 +52,19 @@ async def send_message(message: Message, user_message:str) -> None:
 async def on_ready() -> None:
     print(f'{bot.user} is now running!')
     
-@bot.event
-async def on_message(message: Message) -> None:
-    #Disable bot reacting on bots/itself
-    if message.author.bot:
-        return
+# @bot.event
+# async def on_message(message: Message) -> None:
+    # #Disable bot reacting on bots/itself
+    # if message.author.bot:
+        # return
             
-    username: str = str(message.author)
-    user_message: str  = message.content
-    channel: str  = str(message.channel)
+    # username: str = str(message.author)
+    # user_message: str  = message.content
+    # channel: str  = str(message.channel)
         
-    print(f"[{channel}] {username} said:'{user_message}'")
+    # print(f"[{channel}] {username} said:'{user_message}'")
         
-    await send_message(message,user_message)
+    # await send_message(message,user_message)
     
 #Slash commands are seperated in responding cogs
 #Include Cogs
