@@ -5,7 +5,10 @@ import discord
 import os
 from discord.ext import commands
 import json
-import jmespath
+
+#To convert html to markdown
+import testresources
+import markdownify
 
 # Regex to match Proxer links of the form https://proxer.me/info/<number>/details#top
 proxer_link_regex = r"https:\/\/proxer\.me\/info\/\d+#top"
@@ -43,37 +46,60 @@ class Proxer(commands.Cog):
                 # Extract the value of the "Englischer Titel" row from the HTML source
                 original_titel_regex = r"<td><b>Original Titel</b></td>\s*<td>(.*?)</td>"
                 match_original_titel = re.search(original_titel_regex, html_source)
-                original_titel = match_original_titel.group(1)
-                
                 english_titel_regex = r"<td><b>Englischer Titel</b></td>\s*<td>(.*?)</td>"
                 match_english_titel = re.search(english_titel_regex, html_source)
+                
+                if match_original_titel: 
+                    original_titel = match_original_titel.group(1)
+                else:
+                    original_titel = match_english_titel
+                
+                if match_english_titel:
+                    #Found titels
+                    print("Titel found")
+                else:
+                    #Set english titel to original titel
+                    match_english_titel = match_original_titel
+                
                 if match_english_titel:
                     english_titel = match_english_titel.group(1)
                     print(f"Found Englischer Titel: {english_titel}")
 
                     # Determine the type (Anime, Webtoon, Manga) based on the HTML source
                     if re.search(r"Animeserie/TV", html_source):
+                        #Using Anilist API for Anime
                         series_type = "Anime"
                         anime_info = search_anime_info(english_titel)
 
                         if anime_info:
-                            embed = discord.Embed(title=anime_info['english_title'], description=anime_info['description'], color=0x7289da)
+                            description_markdown = markdownify.markdownify(anime_info['description'])
+                            embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da)
                             embed.add_field(name="Typ", value=str(series_type), inline=False)
                             embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
                             embed.set_thumbnail(url=anime_info['cover_image_url'])
 
-                            await ctx.send(embed=embed)
+                            await message.channel.send(embed = embed)
                         else:
-                            await ctx.send(f"No information found for '{english_titel}'")
+                            #If no titel was found under the english_titel try the original_titel
+                            anime_info = search_anime_info(original_titel)
+                            if anime_info:
+                                description_markdown = markdownify.markdownify(anime_info['description'])
+                                embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da)
+                                embed.add_field(name="Typ", value=str(series_type), inline=False)
+                                embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
+                                embed.set_thumbnail(url=anime_info['cover_image_url'])
+                                await message.channel.send(embed = embed)
+                            else:
+                                await message.channel.send(f"No information found for '{english_titel}'")
 
                     elif re.search(r"Mangaserie/Webtoon", html_source) or re.search(r"Mangaserie", html_source):
+                        #Using mangadex api for Webtoon and Manga
                         series_type = "Webtoon" if "Webtoon" in html_source else "Manga"
                         base_url = "https://api.mangadex.org"
                         manga_params = {"title": english_titel, **final_order_query}
                         mangadex_response = requests.get(f"{base_url}/manga", params=manga_params)
                         has_thumbnail:  bool = False
                         
-                        print(mangadex_response.status_code == 200)
                         if mangadex_response.status_code == 200:
                             mangadex_data = mangadex_response.json()["data"]
                             manga_info = mangadex_data[0]
@@ -81,6 +107,7 @@ class Proxer(commands.Cog):
                                 id = manga_info['id']
                                 cover_id = [rel['id'] for rel in manga_info['relationships'] if rel.get('type') == 'cover_art'][0]
                                 title = manga_info['attributes']['title']['en']
+
                                 description = manga_info["attributes"]["description"]["en"]
                                 #Try finding cover_art over cover_id
                                 mangadex_response_cover = requests.get(f"{base_url}/cover/{cover_id}")
@@ -99,7 +126,6 @@ class Proxer(commands.Cog):
                                 else:
                                     #Try finding cover_art with include extension of mangadex
                                     mangadex_response_cover = requests.get(f"{base_url}/manga/{id}?includes[]=cover_art")
-                                    print(mangadex_response_cover.status_code)
                                     
                                     if mangadex_response_cover.status_code == 200:
                                         mangadex_data = mangadex_response_cover.json()["data"]
@@ -158,7 +184,8 @@ class Proxer(commands.Cog):
                             await message.channel.send("Error accessing MangaDex API")
                     else:
                         series_type = "Unknown"
-                        api_url = ""
+                        #api_url = ""
+                        print("Error no entry found")
                         # Create an embed with the information from the API
                         embed = discord.Embed(title=english_titel, type="rich", description=f"{series_type}: {english_titel}")
                         await message.channel.send(embed=embed)
@@ -185,24 +212,24 @@ def search_anime_info(title):
     '''
 
     variables = {
-        'search': title
+        'search': title,
+        'type' : "ANIME"
     }
 
     url = 'https://graphql.anilist.co'
 
     response = requests.post(url, json={'query': query, 'variables': variables})
-
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         data = response.json()
-        media = data.get('data', {}).get('Media')
+        anime_info = data["data"]["Media"]
 
         # Check if any media was found in the response
-        if media:
-            anime_info = media[0]
+        if anime_info:
+            #anime_id = anime_info["id"]
             romaji_title = anime_info['title']['romaji']
             english_title = anime_info['title']['english']
-            description = anime_info.get('description', 'No description available')
+            description = anime_info["description"]
             cover_image_url = anime_info['coverImage']['extraLarge']
 
             return {
