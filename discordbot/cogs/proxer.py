@@ -73,7 +73,7 @@ class Proxer(commands.Cog):
 
                         if anime_info:
                             description_markdown = markdownify.markdownify(anime_info['description'])
-                            embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da)
+                            embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da, url=f"https://anilist.co/anime/{anime_info['id']}")
                             embed.add_field(name="Typ", value=str(series_type), inline=False)
                             embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
                             embed.set_thumbnail(url=anime_info['cover_image_url'])
@@ -84,7 +84,7 @@ class Proxer(commands.Cog):
                             anime_info = search_anime_info(original_titel)
                             if anime_info:
                                 description_markdown = markdownify.markdownify(anime_info['description'])
-                                embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da)
+                                embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da,url=f"https://anilist.co/anime/{anime_info['id']}")
                                 embed.add_field(name="Typ", value=str(series_type), inline=False)
                                 embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
                                 embed.set_thumbnail(url=anime_info['cover_image_url'])
@@ -132,8 +132,6 @@ class Proxer(commands.Cog):
                                         manga_cover_filename = [rel['attributes']['fileName'] for rel in mangadex_data['relationships'] if rel.get('type') == 'cover_art'][0]
                                         cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}"
                                         temp_filename = change_filename_ending(temp_filename,cover_image_url)
-                                        print(cover_image_url)
-                                        print(temp_filename)
                                         if download_image(cover_image_url, temp_filename):
                                             print("Thumbnail downloaded")
                                             has_thumbnail = True
@@ -226,13 +224,14 @@ def search_anime_info(title):
 
         # Check if any media was found in the response
         if anime_info:
-            #anime_id = anime_info["id"]
+            anime_id = anime_info["id"]
             romaji_title = anime_info['title']['romaji']
             english_title = anime_info['title']['english']
             description = anime_info["description"]
             cover_image_url = anime_info['coverImage']['extraLarge']
 
             return {
+                'id': anime_id,
                 'romaji_title': romaji_title,
                 'english_title': english_title,
                 'description': description,
@@ -254,7 +253,6 @@ def delete_temp_file(temp_filename)-> None:
 #download image for thumbnail
 def download_image(url, temp_filename)-> bool:
     response = requests.get(url)
-    print(response.status_code)
     if response.status_code == 200:
         with open(temp_filename, 'wb') as f:
             f.write(response.content)
