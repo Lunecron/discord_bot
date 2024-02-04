@@ -6,6 +6,7 @@ import os
 from discord.ext import commands
 import json
 from bs4 import BeautifulSoup
+import html
 
 #To convert html to markdown
 import markdownify
@@ -39,6 +40,10 @@ class Proxer(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):  
+        #Check if message from bot
+        if message.author.bot:
+            return
+        
         # Check if the message contains a Proxer link
         proxer_links = re.findall(proxer_link_regex, message.content)
         if proxer_links:
@@ -48,6 +53,7 @@ class Proxer(commands.Cog):
                 
                 if response.status_code == 200:
                     html_source = response.text
+                    
                     #Get Proxer ID
                     pattern = re.compile(r'https://proxer\.me/info/(\d+)#top')
                     match_id = pattern.search(proxer_link)
@@ -56,13 +62,14 @@ class Proxer(commands.Cog):
                         print(f"ID: {id}")
                     else:
                         print(f"No id found in URL: {proxer_link}")
+                        await message.channel.send(f"No id found in URL: {proxer_link}") 
                         return
 
                     
                     original_titel_regex = r"<td><b>Original Titel</b></td>\s*<td>(.*?)</td>"
                     match_original_titel = re.search(original_titel_regex, html_source)
                     
-
+                    print(match_original_titel)
                     
                     #Check if side has original titel else assume side does not have an entry
                     if match_original_titel: 
@@ -77,9 +84,11 @@ class Proxer(commands.Cog):
                     else:
                         print(f"No titel found, abort.")
                         print(f"Check if can not be accessed because of missing rights (probably FSK18).")
-                        no_access_pattern = r'<div id="main"><div class="inner"><h3>Bitte logge dich ein, um diesen Bereich betreten zu können.</h3></div></div>'
+                        # Unescape the HTML source
+                        unescaped_html_source = html.unescape(html_source)
+                        no_access_pattern = '<div id="main">\n<div class="inner"><h3>Bitte logge dich ein, um diesen Bereich betreten zu können.</h3></div>\n</div>'
                         find_error = re.search('src="/images/misc/404.png"', html_source)  
-                        if no_access_pattern in html_source:
+                        if no_access_pattern in unescaped_html_source:
                             print(f"Can not access :'{proxer_link}', Missing permissions")
                             #TODO: Search Proxer with ID
                             ##Beispiel link für suche: https://proxer.me/search?s=search&format=raw&name=Hajirau%20Kimi%20ga%20mitai%20n%20da&sprache=alle&typ=all&status=all&taggenre=&notaggenre=&tagspoilerfilter=spoiler_0&fsk=&hide_finished=&sort=relevance&length=&length-limit=down&tags=&notags=#search
@@ -89,13 +98,8 @@ class Proxer(commands.Cog):
                         elif find_error:
                             print("Page not found 404.")   
                             await message.channel.send(f"No existing entry with id = {id} : '{proxer_link}'") 
-                            return
                         else:
                             await message.channel.send(f"#1 Unknow error with : '{proxer_link}'") 
-                            return
-
-                    
-
                 else:
                     await message.channel.send(f"#2 Unknown error with : '{proxer_link}'") 
 
