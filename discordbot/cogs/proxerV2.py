@@ -122,34 +122,34 @@ async def discord_embed_proxer(message, id , original_titel, alternative_titel, 
     file = discord.File(temp_filename) 
     embed = discord.Embed(title=original_titel, description=description, color=0x992d22,url=f"https://proxer.me/info/{id}#top")
     embed.add_field(name="Typ", value=type, inline=False)
-    if alternative_titel != '':
+    if alternative_titel != '' and alternative_titel != original_titel:
         embed.add_field(name="Alternative Title", value=alternative_titel, inline=False)
     embed.set_thumbnail(url=f'attachment://{temp_filename}')
     await message.channel.send(file=file,embed = embed)
 
 def detect_proxer_links(message):
-    proxer_link_regex = r'https://proxer\.me/info/(\d+)(/[a-zA-Z0-9_]+)?(#top)?'
+    # Define the regex pattern for Proxer links
+    pattern = re.compile(r'(https://proxer\.me/(chapter|info|read)/(\d+)/)')
 
-    pattern = re.compile(proxer_link_regex)
-    matches = pattern.findall(message)
-
-    proxer_links = []
+    # Find all matches in the message
+    matches = re.findall(pattern, message)
+    links = []
     for match in matches:
-        whole_link = f"https://proxer.me/info/{match[0]}{match[1] if match[1] else ''}{match[2] if match[2] else ''}"
-        proxer_links.append(whole_link)
+        links.append(match[0])
+    return links
 
-    return proxer_links
+def extract_proxer_id(link):
+    # Define the regex pattern to extract the ID
+    pattern = re.compile(r'https://proxer\.me/(chapter|info|read)/(\d+)/')
 
-def extract_proxer_id(proxer_link):
-    proxer_link_regex = r'https://proxer\.me/info/(\d+)(/[a-zA-Z0-9_]+)?(#top)?'
-
-    pattern = re.compile(proxer_link_regex)
-    match = pattern.search(proxer_link)
+    # Find the match in the link
+    match = pattern.search(link)
 
     if match:
-        proxer_id = match.group(1)
-        return proxer_id
+        # Extract and return the ID
+        return match.group(2)
     else:
+        # Return None if no match is found
         return None
 
 def getEntryInfo_proxer(html_source)-> (str,str,str,str):
