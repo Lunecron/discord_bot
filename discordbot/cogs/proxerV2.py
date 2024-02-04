@@ -12,7 +12,7 @@ import html
 import markdownify
 
 # Regex to match Proxer links of the form https://proxer.me/info/<number>/details#top
-proxer_link_regex = r"https:\/\/proxer\.me\/info\/\d+#top"
+proxer_link_regex = r'https://proxer\.me/info/(\d+)(/[a-zA-Z0-9_]+)?(#top)?'
 
 temp_filename= "temp.jpg"
 
@@ -45,26 +45,33 @@ class Proxer(commands.Cog):
             return
         
         # Check if the message contains a Proxer link
-        proxer_links = re.findall(proxer_link_regex, message.content)
+        proxer_links = detect_proxer_links(message.content)
         if proxer_links:
             for proxer_link in proxer_links:
+
+                # Check if proxer_link is a string
+                if not isinstance(proxer_link, str):
+                    print(f"Skipping non-string element: {proxer_link}")
+                    return
+                
+                #Get Proxer ID
+                proxer_id = extract_proxer_id(proxer_link)
+
+                if proxer_id:
+                    id = proxer_id
+                    print(f"ID: {id}")
+                    proxer_link = f"https://proxer.me/info/{id}#top"
+                else:
+                    print(f"No id found in URL: {proxer_link}")
+                    await message.channel.send(f"No id found in URL: {proxer_link}") 
+                    return
+                
+                
                 # Download the HTML source of the Proxer page
                 response = requests.get(proxer_link)
                 
                 if response.status_code == 200:
                     html_source = response.text
-                    
-                    #Get Proxer ID
-                    pattern = re.compile(r'https://proxer\.me/info/(\d+)#top')
-                    match_id = pattern.search(proxer_link)
-                    if match_id:
-                        id = match_id.group(1)
-                        print(f"ID: {id}")
-                    else:
-                        print(f"No id found in URL: {proxer_link}")
-                        await message.channel.send(f"No id found in URL: {proxer_link}") 
-                        return
-
                     
                     original_titel_regex = r"<td><b>Original Titel</b></td>\s*<td>(.*?)</td>"
                     match_original_titel = re.search(original_titel_regex, html_source)
@@ -115,17 +122,41 @@ async def discord_embed_proxer(message, id , original_titel, alternative_titel, 
     file = discord.File(temp_filename) 
     embed = discord.Embed(title=original_titel, description=description, color=0x992d22,url=f"https://proxer.me/info/{id}#top")
     embed.add_field(name="Typ", value=type, inline=False)
-    embed.add_field(name="Alternative Title", value=alternative_titel, inline=False)
+    if alternative_titel != '':
+        embed.add_field(name="Alternative Title", value=alternative_titel, inline=False)
     embed.set_thumbnail(url=f'attachment://{temp_filename}')
     await message.channel.send(file=file,embed = embed)
 
+def detect_proxer_links(message):
+    proxer_link_regex = r'https://proxer\.me/info/(\d+)(/[a-zA-Z0-9_]+)?(#top)?'
 
+    pattern = re.compile(proxer_link_regex)
+    matches = pattern.findall(message)
+
+    proxer_links = []
+    for match in matches:
+        whole_link = f"https://proxer.me/info/{match[0]}{match[1] if match[1] else ''}{match[2] if match[2] else ''}"
+        proxer_links.append(whole_link)
+
+    return proxer_links
+
+def extract_proxer_id(proxer_link):
+    proxer_link_regex = r'https://proxer\.me/info/(\d+)(/[a-zA-Z0-9_]+)?(#top)?'
+
+    pattern = re.compile(proxer_link_regex)
+    match = pattern.search(proxer_link)
+
+    if match:
+        proxer_id = match.group(1)
+        return proxer_id
+    else:
+        return None
 
 def getEntryInfo_proxer(html_source)-> (str,str,str,str):
 
     english_titel_regex = r"<td><b>Englischer Titel</b></td>\s*<td>(.*?)</td>"
     match_english_titel = re.search(english_titel_regex, html_source)
-
+    english_titel = ''
     if match_english_titel:
         english_titel = match_english_titel.group(1)
         print(f"Found english titel: {english_titel}")
@@ -135,7 +166,7 @@ def getEntryInfo_proxer(html_source)-> (str,str,str,str):
     # Determine the type (Anime, Webtoon, Manga, OVA,...) based on the HTML source
     type_pattern = r'<span class="fn">(.*?)</span> \((.*?)\):'
     match_type = re.search(type_pattern, html_source)
-
+    type =''
     #Maybe use Error Handler?
     if match_type:
         type = match_type.group(2).strip()
