@@ -100,7 +100,7 @@ class Proxer(commands.Cog):
                             print("Page not found 404.")   
                             await message.channel.send(f"No existing entry with id = {id} : '{proxer_link}'") 
                         elif recaptchar_pattern:
-                            #Not tested yet
+                            #Maybe add recaptcha solver?
                             print("Recaptchar please wait a bit.")   
                             await message.channel.send(f"Proxer blocked us with a recaptchar, please wait a bit befor sending more links. Blocked link: '{proxer_link}'") 
                         else:
