@@ -19,7 +19,7 @@ from responses import get_response
 
 # Load TOKEN
 load_dotenv()
-TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
+TOKEN: Final[str] = os.getenv('DISCORD_TOKEN') # type: ignore
 
 # Bot Setup
 intents:Intents = Intents.default()
