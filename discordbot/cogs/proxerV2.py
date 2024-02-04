@@ -88,6 +88,7 @@ class Proxer(commands.Cog):
                         unescaped_html_source = html.unescape(html_source)
                         no_access_pattern = '<div id="main">\n<div class="inner"><h3>Bitte logge dich ein, um diesen Bereich betreten zu können.</h3></div>\n</div>'
                         find_error = re.search('src="/images/misc/404.png"', html_source)  
+                        recaptchar_pattern = re.search('id="captcha" class="g-recaptcha"', html_source)  
                         if no_access_pattern in unescaped_html_source:
                             print(f"Can not access :'{proxer_link}', Missing permissions")
                             #TODO: Search Proxer with ID
@@ -98,6 +99,10 @@ class Proxer(commands.Cog):
                         elif find_error:
                             print("Page not found 404.")   
                             await message.channel.send(f"No existing entry with id = {id} : '{proxer_link}'") 
+                        elif recaptchar_pattern:
+                            #Not tested yet
+                            print("Recaptchar please wait a bit.")   
+                            await message.channel.send(f"Proxer blocked us with a recaptchar, please wait a bit befor sending more links. Blocked link: '{proxer_link}'") 
                         else:
                             await message.channel.send(f"#1 Unknow error with : '{proxer_link}'") 
                 else:
@@ -108,7 +113,7 @@ class Proxer(commands.Cog):
 
 async def discord_embed_proxer(message, id , original_titel, alternative_titel, type, description):
     file = discord.File(temp_filename) 
-    embed = discord.Embed(title=original_titel, description=description, color=0x7289da,url=f"https://proxer.me/info/{id}#top")
+    embed = discord.Embed(title=original_titel, description=description, color=0x992d22,url=f"https://proxer.me/info/{id}#top")
     embed.add_field(name="Typ", value=type, inline=False)
     embed.add_field(name="Alternative Title", value=alternative_titel, inline=False)
     embed.set_thumbnail(url=f'attachment://{temp_filename}')
