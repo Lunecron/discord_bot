@@ -129,7 +129,7 @@ async def discord_embed_proxer(message, id , original_titel, alternative_titel, 
 
 def detect_proxer_links(message):
     # Define the regex pattern for Proxer links
-    pattern = re.compile(r'(https://proxer\.me/(chapter|info|read)/(\d+)/)')
+    pattern = re.compile(r'(https://proxer\.me/(chapter|info|read)/(\d+))')
 
     # Find all matches in the message
     matches = re.findall(pattern, message)
@@ -140,7 +140,7 @@ def detect_proxer_links(message):
 
 def extract_proxer_id(link):
     # Define the regex pattern to extract the ID
-    pattern = re.compile(r'https://proxer\.me/(chapter|info|read)/(\d+)/')
+    pattern = re.compile(r'https://proxer\.me/(chapter|info|read)/(\d+)')
 
     # Find the match in the link
     match = pattern.search(link)
