@@ -83,10 +83,10 @@ class Proxer(commands.Cog):
                         original_titel = match_original_titel.group(1)
                         print(f"Found original titel: {original_titel}")
 
-                        (english_titel,type,description,thumbnail_url) = getEntryInfo_proxer(html_source)
+                        (english_titel,type,description,adaption_id,adaption_name,thumbnail_url) = getEntryInfo_proxer(html_source)
                         #Download Thumbnail because discord cant access it
                         download_image(thumbnail_url,temp_filename)
-                        await discord_embed_proxer(message,id,original_titel,english_titel,type,description)
+                        await discord_embed_proxer(message,id,original_titel,english_titel,type,description,adaption_id,adaption_name)
                         delete_temp_file(temp_filename)
                     else:
                         print(f"No titel found, abort.")
@@ -118,12 +118,15 @@ class Proxer(commands.Cog):
 #TODO
 #Add Send function for embed: add support possibility for thumbnail, markdown
 
-async def discord_embed_proxer(message, id , original_titel, alternative_titel, type, description):
+async def discord_embed_proxer(message, id , original_titel, alternative_titel, type, description, adaption_id,adaption_name):
     file = discord.File(temp_filename) 
     embed = discord.Embed(title=original_titel, description=description, color=0x992d22,url=f"https://proxer.me/info/{id}#top")
     embed.add_field(name="Typ", value=type, inline=False)
     if alternative_titel != '' and alternative_titel != original_titel:
         embed.add_field(name="Alternative Title", value=alternative_titel, inline=False)
+    if adaption_id != '':
+        adaption_url = f" https://proxer.me/{adaption_id}/details#top"
+        embed.add_field(name="Adaption of",value=f"[{adaption_name}]({adaption_url})", inline=True)
     embed.set_thumbnail(url=f'attachment://{temp_filename}')
     await message.channel.send(file=file,embed = embed)
 
@@ -152,7 +155,7 @@ def extract_proxer_id(link):
         # Return None if no match is found
         return None
 
-def getEntryInfo_proxer(html_source)-> (str,str,str,str):
+def getEntryInfo_proxer(html_source)-> (str,str,str,str,str,str):
 
     english_titel_regex = r"<td><b>Englischer Titel</b></td>\s*<td>(.*?)</td>"
     match_english_titel = re.search(english_titel_regex, html_source)
@@ -186,6 +189,20 @@ def getEntryInfo_proxer(html_source)-> (str,str,str,str):
         description = markdownify.markdownify(description)
         print("Description was found.")
     
+
+    #Find adaptions
+    adaption_titel_regex = r'<tr>\s*<td valign="top"><b>Adaption</b></td>\s*<td valign="top"><a href="/info/(\d+)">(.*?)</a></td>\s*</tr>'
+    match_adaption = re.search(adaption_titel_regex, html_source)
+    if match_adaption:
+        adaption_id = match_adaption.group(1)
+        adaption_name = match_adaption.group(2)
+
+    else:
+        adaption_id = ''
+        adaption_name =''
+        print("No Adaption found.")
+
+
     #Get Thumbnail
     # Define a regular expression pattern
     pattern = re.compile(r'src="//cdn\.proxer\.me/cover/(\d+)\.(jpg|png)"')
@@ -201,7 +218,7 @@ def getEntryInfo_proxer(html_source)-> (str,str,str,str):
         print(thumbnail_url)
         
 
-    return english_titel,type,description,thumbnail_url
+    return english_titel,type,description,adaption_id,adaption_name,thumbnail_url
 
 
 def search_anime_info(title):
