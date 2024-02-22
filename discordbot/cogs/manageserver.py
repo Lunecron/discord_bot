@@ -27,6 +27,14 @@ class Server(commands.Cog):
     async def stopserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
         result_message = await stop_server(server)
         await ctx.send(result_message)
+        
+    @discord.default_permissions(administrator=True)
+    @commands.slash_command(description="Check Server Status")
+    async def server_status(self,ctx):
+        await ctx.defer();
+        response = await check_tmux_servers()
+        await ctx.followup.send(response);
+        
 
 def setup(bot) -> None:
     bot.add_cog(Server(bot))
@@ -81,3 +89,27 @@ async def stop_server(name : ServerList.SERVER_NAME.value) -> str:
         except Exception as e:
             print (f"An error occurred: {str(e)}")
             return f"An error occurred: {str(e)}"
+            
+            
+async def check_tmux_servers() -> str:
+
+    tmux_instances = await run_tmux_command()
+
+    # Build the response string
+    response = ""
+    for server_name in ServerList.SERVER_NAME.value:
+        if server_name in tmux_instances:
+            response += f"{server_name} = online\n"
+        else:
+            response += f"{server_name} = offline\n"
+
+    return response
+    
+async def run_tmux_command():
+        try:
+            # Get a list of all tmux sessions
+            tmux_list_output = subprocess.check_output(["tmux", "list-sessions"], text=True)
+            return [line.split(":")[0] for line in tmux_list_output.splitlines()]
+        except subprocess.CalledProcessError as e:
+            print(f"Error running tmux command: {e}")
+            return []
