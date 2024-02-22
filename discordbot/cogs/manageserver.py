@@ -19,14 +19,16 @@ class Server(commands.Cog):
     @commands.slash_command(description="Start a running Server")
     @discord.default_permissions(administrator=True)
     async def startserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
+        await ctx.defer();
         result_message = await start_server(server)
-        await ctx.send(result_message)
+        await ctx.followup.send(result_message)
 
     @discord.default_permissions(administrator=True)
     @commands.slash_command(description="Stop a running server")
     async def stopserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
+        await ctx.defer();
         result_message = await stop_server(server)
-        await ctx.send(result_message)
+        await ctx.followup.send(result_message)
         
     @discord.default_permissions(administrator=True)
     @commands.slash_command(description="Check Server Status")
