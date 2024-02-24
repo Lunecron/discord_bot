@@ -15,7 +15,7 @@ from responses import get_response
 #dotenv:#
 ## pip install python-dotenv ##
 #pycord (with support of new features like slash_command,etc):#
-## python3 -m pip install -U py-cord --pre ##
+## pip install git+https://github.com/Pycord-Development/pycord ##
 
 # Load TOKEN
 load_dotenv()
@@ -68,7 +68,9 @@ async def on_ready() -> None:
     
 #Slash commands are seperated in responding cogs
 #Include Cogs
-for filename in os.listdir("cogs"):
+script_path = os.path.abspath(__file__)
+script_directory = os.path.dirname(script_path)
+for filename in os.listdir(script_directory + "\cogs"):
     if filename.endswith(".py"):
         bot.load_extension(f"cogs.{filename[:-3]}")
 

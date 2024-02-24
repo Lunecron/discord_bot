@@ -19,23 +19,23 @@ class Server(commands.Cog):
     @commands.slash_command(description="Start a running Server")
     @discord.default_permissions(administrator=True)
     async def startserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
-        await ctx.defer();
+        await ctx.defer()
         result_message = await start_server(server)
         await ctx.followup.send(result_message)
 
     @discord.default_permissions(administrator=True)
     @commands.slash_command(description="Stop a running server")
     async def stopserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
-        await ctx.defer();
+        await ctx.defer()
         result_message = await stop_server(server)
         await ctx.followup.send(result_message)
         
     @discord.default_permissions(administrator=True)
     @commands.slash_command(description="Check Server Status")
     async def server_status(self,ctx):
-        await ctx.defer();
+        await ctx.defer()
         response = await check_tmux_servers()
-        await ctx.followup.send(response);
+        await ctx.followup.send(response)
         
 
 def setup(bot) -> None:

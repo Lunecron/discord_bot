@@ -141,7 +141,7 @@ def detect_proxer_links(message):
         links.append(match[0])
     return links
 
-def extract_proxer_id(link):
+def extract_proxer_id(link : str):
     # Define the regex pattern to extract the ID
     pattern = re.compile(r'https://proxer\.me/(chapter|info|read)/(\d+)')
 
@@ -396,7 +396,13 @@ def delete_temp_file(temp_filename)-> None:
         print(f"Error deleting temporary file: {e}")
 
 #download image for thumbnail
-def download_image(url, temp_filename)-> bool:
+def download_image(url, temp_filename) -> bool:
+    # Check if the file exists
+    if not os.path.exists(temp_filename):
+        # If the file does not exist, create it
+        with open(temp_filename, 'w'):
+            pass  # This is a simple way to create an empty file
+
     response = requests.get(url)
     if response.status_code == 200:
         with open(temp_filename, 'wb') as f:

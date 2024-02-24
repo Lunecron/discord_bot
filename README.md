@@ -1,4 +1,4 @@
-# Discord_bot
+# LuneBot
 dependences: python3, dotenv, pycord, tmux
 
 Discord Bot that can be used to start/stop specific server on vps.
