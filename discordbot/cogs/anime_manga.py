@@ -124,7 +124,6 @@ def search_anime_info(title):
 
 async def mangadex(ctx, name):
     #Using mangadex api for Webtoon and Manga
-    series_type = "Manga"
     base_url = "https://api.mangadex.org"
     manga_params = {"title": name, **final_order_query}
     mangadex_response = requests.get(f"{base_url}/manga", params=manga_params)
@@ -136,7 +135,20 @@ async def mangadex(ctx, name):
         if manga_info:
             id = manga_info['id']
             cover_id = [rel['id'] for rel in manga_info['relationships'] if rel.get('type') == 'cover_art'][0]
+            series_type = manga_info['type'].capitalize()
             title = manga_info['attributes']['title']['en']
+
+            #Add alternative titles
+            alt_title=''
+            alt_titles_en = [title["en"] for title in manga_info["attributes"]["altTitles"] if "en" in title]
+            alt_titles_ja_ro = [title["ja-ro"] for title in manga_info["attributes"]["altTitles"] if "ja-ro" in title]
+
+            print(alt_titles_en)
+            print(alt_titles_ja_ro)
+            for x in range(len(alt_titles_en)):
+                alt_title += alt_titles_en[x] + "\n"
+            for y in range(len(alt_titles_ja_ro)):
+                alt_title += alt_titles_ja_ro[y] + "\n"
 
             description = manga_info["attributes"]["description"]["en"]
             #Try finding cover_art over cover_id
@@ -170,19 +182,12 @@ async def mangadex(ctx, name):
                     else:
                         print("Thumbnail could not be downloaded")
                         has_thumbnail = False
-                
+
                 else:
                     #No cover found: filler image
                     #no_cover.jpg needs to be in the root folder of the bot
                     temp_filename = 'no_cover.jpg'
                     print("Using filler thumbnail")
-
-            
-            #Try get alternative title
-            if name != title:
-                alt_title = name
-            else:
-                alt_title = ''
             
             if has_thumbnail:
                 file_and_dir = os.path.join(temp_images_directory,temp_filename)
