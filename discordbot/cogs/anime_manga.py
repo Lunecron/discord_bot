@@ -64,6 +64,19 @@ async def anilist(ctx,name : str):
 
     if anime_info:
         description_markdown = markdownify.markdownify(anime_info['description'])
+        
+        #Correct formationg os series_type
+        if anime_info['format']:
+            #Special case of the name One-Shot
+            if anime_info['format'].lower() == "one_shot":
+                format_correct = "One-Shot"
+            else:
+                format_correct = anime_info['format'][0].upper() + anime_info['format'][1:].lower()
+
+            series_type += "/"+ format_correct
+
+
+
         embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da, url=f"https://anilist.co/anime/{anime_info['id']}")
         embed.add_field(name="Typ", value=str(series_type), inline=False)
         embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
@@ -81,6 +94,7 @@ def search_anime_info(title):
           romaji
           english
         }
+        format
         description
         coverImage {
           extraLarge
@@ -100,11 +114,13 @@ def search_anime_info(title):
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         data = response.json()
+        download_file(data)
         anime_info = data["data"]["Media"]
 
         # Check if any media was found in the response
         if anime_info:
             anime_id = anime_info["id"]
+            anime_format = anime_info["format"]
             romaji_title = anime_info['title']['romaji']
             english_title = anime_info['title']['english']
             description = anime_info["description"]
@@ -112,6 +128,7 @@ def search_anime_info(title):
 
             return {
                 'id': anime_id,
+                'format': anime_format,
                 'romaji_title': romaji_title,
                 'english_title': english_title,
                 'description': description,
@@ -143,8 +160,6 @@ async def mangadex(ctx, name):
             alt_titles_en = [title["en"] for title in manga_info["attributes"]["altTitles"] if "en" in title]
             alt_titles_ja_ro = [title["ja-ro"] for title in manga_info["attributes"]["altTitles"] if "ja-ro" in title]
 
-            print(alt_titles_en)
-            print(alt_titles_ja_ro)
             for x in range(len(alt_titles_en)):
                 alt_title += alt_titles_en[x] + "\n"
             for y in range(len(alt_titles_ja_ro)):
