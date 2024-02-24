@@ -12,6 +12,7 @@ class MinecraftConsole(commands.Cog):
     
     @commands.slash_command(description="Execute command on minecraft server")
     @commands.is_owner()
+    @commands.default_permission(administrator=True)
     async def minecraft_exec(self, ctx, command: Option(str,required = True)):
         if tmux_session_exists(session_name):
             print(f"The tmux session '{session_name}' exists.")
