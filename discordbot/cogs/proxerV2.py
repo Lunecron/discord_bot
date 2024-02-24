@@ -14,6 +14,10 @@ import markdownify
 # Regex to match Proxer links of the form https://proxer.me/info/<number>/details#top
 proxer_link_regex = r'https://proxer\.me/info/(\d+)(/[a-zA-Z0-9_]+)?(#top)?'
 
+#Directory of the main file of the bot
+bot_main_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+temp_images_directory = os.path.join(bot_main_directory, 'temp_images')
+
 temp_filename= "temp.jpg"
 
 #Sorting for mangadex
@@ -37,6 +41,7 @@ search_on_anilist = {"Animeserie","Animeserie/TV","Animeserie/OVA","Animeserie/O
 class Proxer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        createImageDir()
 
     @commands.Cog.listener()
     async def on_message(self, message):  
@@ -119,7 +124,8 @@ class Proxer(commands.Cog):
 #Add Send function for embed: add support possibility for thumbnail, markdown
 
 async def discord_embed_proxer(message, id , original_titel, alternative_titel, type, description, adaption_id,adaption_name):
-    file = discord.File(temp_filename) 
+    file_and_dir = os.path.join(temp_images_directory,temp_filename)
+    file = discord.File(file_and_dir) 
     embed = discord.Embed(title=original_titel, description=description, color=0x992d22,url=f"https://proxer.me/info/{id}#top")
     embed.add_field(name="Typ", value=type, inline=False)
     if alternative_titel != '' and alternative_titel != original_titel:
@@ -129,6 +135,7 @@ async def discord_embed_proxer(message, id , original_titel, alternative_titel, 
         embed.add_field(name="Adaption of",value=f"[{adaption_name}]({adaption_url})", inline=True)
     embed.set_thumbnail(url=f'attachment://{temp_filename}')
     await message.channel.send(file=file,embed = embed)
+    file.close()
 
 def detect_proxer_links(message):
     # Define the regex pattern for Proxer links
@@ -269,152 +276,40 @@ def search_anime_info(title):
 
     # If something went wrong or no matching media found, return None
     return None
-    
-# def anilist():
-#     # Determine the type (Anime, Webtoon, Manga) based on the HTML source
-#                     if re.search(r"Animeserie/TV", html_source):
-#                         #Using Anilist API for Anime
-#                         series_type = "Anime"
-#                         anime_info = search_anime_info(english_titel)
-
-#                         if anime_info:
-#                             description_markdown = markdownify.markdownify(anime_info['description'])
-#                             embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da, url=f"https://anilist.co/anime/{anime_info['id']}")
-#                             embed.add_field(name="Typ", value=str(series_type), inline=False)
-#                             embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
-#                             embed.set_thumbnail(url=anime_info['cover_image_url'])
-
-#                             await message.channel.send(embed = embed)
-#                         else:
-#                             #If no titel was found under the english_titel try the original_titel
-#                             anime_info = search_anime_info(original_titel)
-#                             if anime_info:
-#                                 description_markdown = markdownify.markdownify(anime_info['description'])
-#                                 embed = discord.Embed(title=anime_info['english_title'], description=description_markdown, color=0x7289da,url=f"https://anilist.co/anime/{anime_info['id']}")
-#                                 embed.add_field(name="Typ", value=str(series_type), inline=False)
-#                                 embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
-#                                 embed.set_thumbnail(url=anime_info['cover_image_url'])
-#                                 await message.channel.send(embed = embed)
-#                             else:
-#                                 await message.channel.send(f"No information found for '{english_titel}'")
-
-# def mangadex():
-#     #Using mangadex api for Webtoon and Manga
-#                         series_type = "Webtoon" if "Webtoon" in html_source else "Manga"
-#                         base_url = "https://api.mangadex.org"
-#                         manga_params = {"title": english_titel, **final_order_query}
-#                         mangadex_response = requests.get(f"{base_url}/manga", params=manga_params)
-#                         has_thumbnail:  bool = False
-                        
-#                         if mangadex_response.status_code == 200:
-#                             mangadex_data = mangadex_response.json()["data"]
-#                             manga_info = mangadex_data[0] if mangadex_data else None
-#                             if manga_info:
-#                                 id = manga_info['id']
-#                                 cover_id = [rel['id'] for rel in manga_info['relationships'] if rel.get('type') == 'cover_art'][0]
-#                                 title = manga_info['attributes']['title']['en']
-
-#                                 description = manga_info["attributes"]["description"]["en"]
-#                                 #Try finding cover_art over cover_id
-#                                 mangadex_response_cover = requests.get(f"{base_url}/cover/{cover_id}")
-                                    
-#                                 if mangadex_response_cover.status_code == 200:
-#                                     manga_cover_filename = mangadex_response_cover.json()["data"]['attributes']['fileName']
-#                                     cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}.512.jpg"
-#                                     temp_filename = change_filename_ending(temp_filename,cover_image_url)
-#                                     if download_image(cover_image_url, temp_filename):
-#                                         print("Thumbnail downloaded")
-#                                         has_thumbnail = True
-#                                     else:
-#                                         print("Thumbnail could not be downloaded: #1")
-#                                         has_thumbnail = False
-                                        
-#                                 else:
-#                                     #Try finding cover_art with include extension of mangadex
-#                                     mangadex_response_cover = requests.get(f"{base_url}/manga/{id}?includes[]=cover_art")
-                                    
-#                                     if mangadex_response_cover.status_code == 200:
-#                                         mangadex_data = mangadex_response_cover.json()["data"]
-#                                         manga_cover_filename = [rel['attributes']['fileName'] for rel in mangadex_data['relationships'] if rel.get('type') == 'cover_art'][0]
-#                                         cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}.512.jpg"
-#                                         temp_filename = change_filename_ending(temp_filename,cover_image_url)
-#                                         if download_image(cover_image_url, temp_filename):
-#                                             print("Thumbnail downloaded")
-#                                             has_thumbnail = True
-#                                         else:
-#                                             print("Thumbnail could not be downloaded: #1")
-#                                             has_thumbnail = False
-                                    
-#                                     else:
-#                                         #No cover found: filler image
-#                                         #no_cover.jpg needs to be in the root folder of the bot
-#                                         temp_filename = 'no_cover.jpg'
-#                                         print("Using filler thumbnail")
-#                                         # if download_image(cover_image_url, temp_filename):
-#                                             # has_thumbnail = True
-#                                             # print("Filler thumbnail downloaded")
-#                                         # else:
-#                                             # print("Thumbnail could not be downloaded: #2")
-#                                             # has_thumbnail = False
-                                
-#                                 #Try get alternative title
-#                                 if english_titel != title:
-#                                     alt_title = english_titel
-#                                 elif original_titel != title:
-#                                     alt_title = original_titel
-#                                 else:
-#                                     alt_title = title
-                                
-#                                 if has_thumbnail:
-#                                     file = discord.File(temp_filename)  
-#                                     embed = discord.Embed(title=title, description=description, color=0x7289da,url=f'https://mangadex.org/manga/{id}')
-#                                     embed.add_field(name="Typ", value=str(series_type), inline=False)
-#                                     embed.add_field(name="Alt Title", value=alt_title, inline=False)
-#                                     embed.set_thumbnail(url=f'attachment://{temp_filename}')
-#                                     await message.channel.send(file=file,embed = embed)
-#                                     #Prevent deleting no_cover.jpg
-#                                     if temp_filename != "no_cover.jpg":
-#                                         delete_temp_file(temp_filename)
-#                                 else:
-#                                     embed = discord.Embed(title=title, description=description, color=0x7289da,url=f'https://mangadex.org/manga/{id}')
-#                                     embed.add_field(name="Typ", value=str(series_type), inline=False)
-#                                     embed.add_field(name="Alt Title", value=alt_title, inline=False)
-#                                     await message.channel.send(embed = embed)
-                                
-                                
-#                             else:
-#                                 await message.channel.send(f"No information found for '{english_titel}' on MangaDex")
-#                         else:
-#                             await message.channel.send("Error accessing MangaDex API")
 
 #delete temp image
 def delete_temp_file(temp_filename)-> None:
+    file_and_dir = os.path.join(temp_images_directory,temp_filename)
+    time.sleep(5)
     try:
-        os.remove(temp_filename)
+        os.remove(file_and_dir)
         print(f"Temporary file {temp_filename} deleted.")
     except Exception as e:
-        print(f"Error deleting temporary file: {e}")
+        print(f"Error deleting temporary file ({temp_filename}): {e}")
 
 #download image for thumbnail
 def download_image(url, temp_filename) -> bool:
-    # Check if the file exists
-    if not os.path.exists(temp_filename):
-        # If the file does not exist, create it
-        with open(temp_filename, 'w'):
-            pass  # This is a simple way to create an empty file
-
+    file_and_dir = os.path.join(temp_images_directory,temp_filename)
     response = requests.get(url)
     if response.status_code == 200:
-        with open(temp_filename, 'wb') as f:
+        with open(file_and_dir, 'wb') as f:
             f.write(response.content)
+        f.close() # Close the file explicitly
+        response.close()  # Close the response explicitly
         return True
     else:
         return False
 
+
 #download json file for request testing
+#just for debugging
 def download_file(data):
     with open("data.json", 'w') as json_file:
             json.dump(data, json_file, indent=4)
+
+# Create the temp_images directory if it doesn't exist
+def createImageDir():
+    os.makedirs(temp_images_directory, exist_ok=True)
         
 #check ending of the image in the url and change temp_filename corresponding
 def change_filename_ending(temp_filename,url) -> str:

@@ -39,14 +39,20 @@ class AnimeAndManga(commands.Cog):
         createImageDir()
     
     @commands.slash_command(description="Search Anime")
-    async def search_anime(self, ctx, name: str, required = True):
-        await ctx.defer()
-        await anilist(ctx, name)
+    async def search_anime(self, ctx, name: Option(str,required = True, default = '')):
+        if not name:
+            ctx.send("Please enter a name.")
+        else:
+            await ctx.defer()
+            await anilist(ctx, name)
 
     @commands.slash_command(description="Search Manga")
-    async def search_manga(self, ctx, name: str, required = True):
-        await ctx.defer()
-        await mangadex(ctx, name)
+    async def search_manga(self, ctx, name: Option(str, required = True, default = '')):
+        if not name:
+            ctx.send("Please enter a name.")
+        else:
+            await ctx.defer()
+            await mangadex(ctx, name)
 
 def setup(bot) -> None:
     bot.add_cog(AnimeAndManga(bot))
