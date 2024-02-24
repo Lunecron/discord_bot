@@ -7,6 +7,7 @@ from discord.ext import commands
 import json
 from bs4 import BeautifulSoup
 import html
+import time
 
 #To convert html to markdown
 import markdownify

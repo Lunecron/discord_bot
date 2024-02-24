@@ -41,7 +41,7 @@ class AnimeAndManga(commands.Cog):
     @commands.slash_command(description="Search Anime")
     async def search_anime(self, ctx, name: Option(str,required = True, default = '')):
         if not name:
-            ctx.send("Please enter a name.")
+            await ctx.respond("Please enter a name.")
         else:
             await ctx.defer()
             await anilist(ctx, name)
@@ -49,7 +49,7 @@ class AnimeAndManga(commands.Cog):
     @commands.slash_command(description="Search Manga")
     async def search_manga(self, ctx, name: Option(str, required = True, default = '')):
         if not name:
-            ctx.send("Please enter a name.")
+            await ctx.respond("Please enter a name.")
         else:
             await ctx.defer()
             await mangadex(ctx, name)
