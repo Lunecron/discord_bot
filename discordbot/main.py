@@ -70,7 +70,7 @@ async def on_ready() -> None:
 #Include Cogs
 script_path = os.path.abspath(__file__)
 script_directory = os.path.dirname(script_path)
-for filename in os.listdir(script_directory + "\cogs"):
+for filename in os.listdir(script_directory + "/cogs"):
     if filename.endswith(".py"):
         bot.load_extension(f"cogs.{filename[:-3]}")
 
