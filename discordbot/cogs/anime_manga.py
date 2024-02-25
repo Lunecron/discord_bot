@@ -93,7 +93,7 @@ async def anilist(ctx,name : str):
         embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
         embed.set_thumbnail(url=anime_info['cover_image_url'])
         button_view = ButtonView(ctx)
-        await ctx.followup.send(embed = embed, view=button_view()) 
+        await ctx.followup.send(embed = embed, view=button_view) 
         # Enable the button after 1 second
         await button_view.enable_after_delay()
     else:
