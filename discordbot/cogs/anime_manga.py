@@ -37,6 +37,10 @@ class AnimeAndManga(commands.Cog):
     def __init__(self,bot):
         self.bot = bot
         createImageDir()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.bot.add_view(ButtonView())
     
     @commands.slash_command(description="Search Anime")
     async def search_anime(self, ctx, name: Option(str,required = True, default = '')):
@@ -81,7 +85,10 @@ async def anilist(ctx,name : str):
         embed.add_field(name="Typ", value=str(series_type), inline=False)
         embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
         embed.set_thumbnail(url=anime_info['cover_image_url'])
-        await ctx.followup.send(embed = embed) 
+        button_view = ButtonView()
+        await ctx.followup.send(embed = embed, view=button_view) 
+        # Enable the button after 1 second
+        await button_view.enable_after_delay()
     else:
         await ctx.followup.send(f"No information found for '{name}'")
 
@@ -114,7 +121,6 @@ def search_anime_info(title):
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         data = response.json()
-        download_file(data)
         anime_info = data["data"]["Media"]
 
         # Check if any media was found in the response
@@ -212,7 +218,11 @@ async def mangadex(ctx, name):
                 if alt_title != '':
                     embed.add_field(name="Alt Title", value=alt_title, inline=False)
                 embed.set_thumbnail(url=f'attachment://{temp_filename}')
-                await ctx.followup.send(file=file, embed=embed)
+                
+                button_view = ButtonView()
+                await ctx.followup.send(file=file, embed=embed , view=button_view)
+                # Enable the button after 1 second
+                await button_view.enable_after_delay()
                 file.close()
                 #Prevent deleting no_cover.jpg
                 if temp_filename != "no_cover.jpg":
@@ -221,13 +231,16 @@ async def mangadex(ctx, name):
                 embed = discord.Embed(title=title, description=description, color=0x7289da,url=f'https://mangadex.org/manga/{id}')
                 embed.add_field(name="Typ", value=str(series_type), inline=False)
                 embed.add_field(name="Alt Title", value=alt_title, inline=False)
-                await ctx.followup.send(embed = embed) 
+                button_view = ButtonView()
+                await ctx.followup.send(embed = embed, view=button_view) 
+                # Enable the button after 1 second
+                await button_view.enable_after_delay()
             
             
         else:
-            await ctx.followup.send(f"No information found for '{name}' on MangaDex")
+            await ctx.followup.send(f"No information found for '{name}' on MangaDex", ephemeral= True)
     else:
-        await ctx.followup.send("Error accessing MangaDex API")
+        await ctx.followup.send("Error accessing MangaDex API", ephemeral= True)
 
 #delete temp image
 def delete_temp_file(temp_filename)-> None:
@@ -274,3 +287,35 @@ def change_filename_ending(temp_filename,url) -> str:
     else:
         print("No correct thumbnail format, trying .jpg:")
         return temp_filename 
+    
+class ButtonView(discord.ui.View):
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    async def enable_after_delay(self):
+        time.sleep(1)
+        # Enable the button
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                print(child.label)
+                child.disabled = False
+        await self.message.edit(view=self)
+        
+
+    @discord.ui.button(label="Correct", style=discord.ButtonStyle.green, emoji="✅", custom_id="button_correct", disabled=True)
+    async def button_correct(self,button,interaction):
+        original_message = interaction.message
+        if interaction.message.embeds[0]:
+            await interaction.response.send_message(embed=interaction.message.embeds[0])
+        await original_message.delete()
+
+    @discord.ui.button(label="Search", style=discord.ButtonStyle.primary, emoji="🔍", custom_id="button_search", disabled=True)
+    async def button_search(self,button,interaction):
+        await interaction.response.send_message("Hello")
+
+    @discord.ui.button(label="Dismiss", style=discord.ButtonStyle.red, emoji="✖️", custom_id="button_dismiss", disabled=True)
+    async def button_dismiss(self,button,interaction):
+        original_message = interaction.message
+        await interaction.response.send_message("Search deleted." ,ephemeral= True ,delete_after=20)
+        await original_message.delete()
