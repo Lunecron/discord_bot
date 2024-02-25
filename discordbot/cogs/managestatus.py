@@ -111,7 +111,6 @@ async def update_status_and_activity(self,status_type:str,activity_type:str,name
         print("Activitiy not found. No activity taken.")
         act = None
     self.config = {'status': status_type ,'activity':activity_type,'name':name,'url':url}
-    print(self.config)
     await self.bot.change_presence(status=status, activity=act)
     saveconfig(self)
 
