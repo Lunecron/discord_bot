@@ -38,9 +38,9 @@ class AnimeAndManga(commands.Cog):
         self.bot = bot
         createImageDir()
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.bot.add_view(ButtonView())
+    # @commands.Cog.listener()
+    # async def on_ready(self,ctx):
+    #     self.bot.add_view(ButtonView())
     
     @commands.slash_command(description="Search Anime")
     async def search_anime(self, ctx, name: Option(str,required = True, default = '')):
@@ -57,6 +57,13 @@ class AnimeAndManga(commands.Cog):
         else:
             await ctx.defer()
             await mangadex(ctx, name)
+
+    @commands.slash_command(description="Page example")
+    async def paginate(self, ctx):
+        # Replace this with your list of embeds or messages
+        data = [discord.Embed(title=f"Page {i}", description=f"Content of page {i}") for i in range(1, 6)]
+
+        await paginate_search(ctx,data)
 
 def setup(bot) -> None:
     bot.add_cog(AnimeAndManga(bot))
@@ -85,8 +92,8 @@ async def anilist(ctx,name : str):
         embed.add_field(name="Typ", value=str(series_type), inline=False)
         embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
         embed.set_thumbnail(url=anime_info['cover_image_url'])
-        button_view = ButtonView()
-        await ctx.followup.send(embed = embed, view=button_view) 
+        button_view = ButtonView(ctx)
+        await ctx.followup.send(embed = embed, view=button_view()) 
         # Enable the button after 1 second
         await button_view.enable_after_delay()
     else:
@@ -219,7 +226,7 @@ async def mangadex(ctx, name):
                     embed.add_field(name="Alt Title", value=alt_title, inline=False)
                 embed.set_thumbnail(url=f'attachment://{temp_filename}')
                 
-                button_view = ButtonView()
+                button_view = ButtonView(ctx)
                 await ctx.followup.send(file=file, embed=embed , view=button_view)
                 # Enable the button after 1 second
                 await button_view.enable_after_delay()
@@ -231,7 +238,7 @@ async def mangadex(ctx, name):
                 embed = discord.Embed(title=title, description=description, color=0x7289da,url=f'https://mangadex.org/manga/{id}')
                 embed.add_field(name="Typ", value=str(series_type), inline=False)
                 embed.add_field(name="Alt Title", value=alt_title, inline=False)
-                button_view = ButtonView()
+                button_view = ButtonView(ctx)
                 await ctx.followup.send(embed = embed, view=button_view) 
                 # Enable the button after 1 second
                 await button_view.enable_after_delay()
@@ -290,15 +297,26 @@ def change_filename_ending(temp_filename,url) -> str:
     
 class ButtonView(discord.ui.View):
 
-    def __init__(self):
+    def __init__(self,ctx):
         super().__init__(timeout=None)
+        self.ctx = ctx
+
+    async def on_timeout(self):
+        if self is not None:
+            await self.message.edit(view=None)
+        
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message("You are not allowed to interact with this paginator.", ephemeral=True)
+            return False
+        return True
 
     async def enable_after_delay(self):
         time.sleep(1)
         # Enable the button
         for child in self.children:
             if isinstance(child, discord.ui.Button):
-                print(child.label)
                 child.disabled = False
         await self.message.edit(view=self)
         
@@ -319,3 +337,53 @@ class ButtonView(discord.ui.View):
         original_message = interaction.message
         await interaction.response.send_message("Search deleted." ,ephemeral= True ,delete_after=20)
         await original_message.delete()
+
+
+class PaginatorView(discord.ui.View):
+    def __init__(self, ctx, data):
+        super().__init__(timeout=None)
+        self.ctx = ctx
+        self.data = data
+        self.current_page = 0
+
+    async def on_timeout(self):
+        if self is not None:
+            await self.message.edit(view=None)
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        if interaction.user != self.ctx.author:
+            await interaction.response.send_message("You are not allowed to interact with this paginator.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, emoji="✅", custom_id="button_accept_paginator", disabled=False)
+    async def accept_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.send_message(embed=self.data[self.current_page], view=None)
+        await self.message.delete()
+
+    @discord.ui.button(label="Prev",style=discord.ButtonStyle.primary, custom_id="button_prev_paginator", disabled=False)
+    async def prev_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        self.current_page = max(0, self.current_page - 1)
+        await self.update_message(interaction)
+
+    @discord.ui.button(label="Next",style=discord.ButtonStyle.primary, custom_id="button_next_paginator", disabled=False)
+    async def next_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        self.current_page = min(len(self.data) - 1, self.current_page + 1)
+        await self.update_message(interaction)
+
+    @discord.ui.button(label="Dismiss", style=discord.ButtonStyle.red, emoji="✖️", custom_id="button_dismiss_paginator", disabled=False)
+    async def dismiss_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.send_message("Paginator dismissed.", ephemeral=True)
+        await self.message.delete()
+
+    async def update_message(self,interaction):
+        await interaction.response.defer()
+        embed = self.data[self.current_page]
+        await self.message.edit(embed=embed)
+
+
+#Paginate the embedlist data
+async def paginate_search(ctx,data):
+    paginator_view = PaginatorView(ctx, data)
+    message = await ctx.respond(embed=data[0], view=paginator_view)
+    paginator_view.message = message
