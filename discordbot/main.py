@@ -23,6 +23,7 @@ TOKEN: Final[str] = os.getenv('DISCORD_TOKEN') # type: ignore
 
 # Bot Setup
 intents:Intents = Intents.default()
+intents.presences = True
 intents.members = True
 intents.message_content = True
 bot: Bot = Bot(intents=intents)
@@ -51,6 +52,8 @@ async def send_message(message: Message, user_message:str) -> None:
 @bot.event
 async def on_ready() -> None:
     print(f'{bot.user} is now running!')
+
+
     
 # @bot.event
 # async def on_message(message: Message) -> None:

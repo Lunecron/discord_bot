@@ -5,6 +5,7 @@ import asyncio
 import subprocess
 from discord.ext import commands
 from discord.commands import Option
+from discord import default_permissions
 
 #ServerList includes SERVER_NAME, START_SERVER: name of file to start the server, STOP_SERVER: name of file to stop the server
 class ServerList(Enum):
@@ -17,8 +18,8 @@ class Server(commands.Cog):
         self.bot = bot
     
     @commands.slash_command(description="Start a running Server")
-    @discord.default_permissions(administrator=True)
-    @discord.has_permissions(administrator=True)
+    @default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
     async def startserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
         await ctx.defer()
         result_message = await start_server(server)
@@ -26,8 +27,8 @@ class Server(commands.Cog):
 
 
     @commands.slash_command(description="Stop a running server")
-    @discord.default_permissions(administrator=True)
-    @discord.has_permissions(administrator=True)
+    @default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
     async def stopserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
         await ctx.defer()
         result_message = await stop_server(server)
