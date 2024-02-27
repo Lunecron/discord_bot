@@ -685,15 +685,21 @@ async def shorten_and_complete_embed_searchresults_anilist(data):
 
             description_markdown = markdownify.markdownify(entry['description'])
 
+            if entry['english_title'] == None or entry['english_title'] == '':
+                entry['english_title'] = entry['romaji_title']
+                entry['romaji_title'] = None
+
             shorten_embed = discord.Embed(title=entry['english_title'], color=0x7289da, url=f"https://anilist.co/anime/{entry['id']}")
             shorten_embed.add_field(name="Typ", value=str(series_type), inline=False)
-            shorten_embed.add_field(name="Romaji Title", value=entry['romaji_title'], inline=False)
+            if entry['romaji_title'] != None:
+                shorten_embed.add_field(name="Romaji Title", value=entry['romaji_title'], inline=False)
             shorten_embed.set_thumbnail(url=entry['cover_image_url'])
             shorten_embeded_data.append(shorten_embed)
 
             complete_embed = discord.Embed(title=entry['english_title'], description=description_markdown, color=0x7289da, url=f"https://anilist.co/anime/{entry['id']}")
             complete_embed.add_field(name="Typ", value=str(series_type), inline=False)
-            complete_embed.add_field(name="Romaji Title", value=entry['romaji_title'], inline=False)
+            if entry['romaji_title'] != None:
+                complete_embed.add_field(name="Romaji Title", value=entry['romaji_title'], inline=False)
             complete_embed.set_thumbnail(url=entry['cover_image_url'])
             complete_embed_data.append(complete_embed)
         else:
