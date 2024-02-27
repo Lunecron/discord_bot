@@ -58,13 +58,6 @@ class AnimeAndManga(commands.Cog):
             await ctx.defer()
             await mangadex(ctx, name)
 
-    @commands.slash_command(description="Page example")
-    async def paginate(self, ctx):
-        # Replace this with your list of embeds or messages
-        data = [discord.Embed(title=f"Page {i}", description=f"Content of page {i}") for i in range(1, 6)]
-
-        await paginate_search(ctx,data)
-
 def setup(bot) -> None:
     bot.add_cog(AnimeAndManga(bot))
 
@@ -76,7 +69,7 @@ async def anilist(ctx,name : str):
     if anime_info:
         description_markdown = markdownify.markdownify(anime_info['description'])
         
-        #Correct formationg os series_type
+        #Correct formationg of series_type
         if anime_info['format']:
             #Special case of the name One-Shot
             if anime_info['format'].lower() == "one_shot":
@@ -92,7 +85,8 @@ async def anilist(ctx,name : str):
         embed.add_field(name="Typ", value=str(series_type), inline=False)
         embed.add_field(name="Romaji Title", value=anime_info['romaji_title'], inline=False)
         embed.set_thumbnail(url=anime_info['cover_image_url'])
-        button_view = ButtonView(ctx)
+        name_and_search_type = [name,"anime"]
+        button_view = ButtonView(ctx,name_and_search_type)
         await ctx.followup.send(embed = embed, view=button_view) 
         # Enable the button after 1 second
         await button_view.enable_after_delay()
@@ -225,20 +219,19 @@ async def mangadex(ctx, name):
                 if alt_title != '':
                     embed.add_field(name="Alt Title", value=alt_title, inline=False)
                 embed.set_thumbnail(url=f'attachment://{temp_filename}')
-                
-                button_view = ButtonView(ctx)
+                name_and_search_type = [name,"manga"]
+                file_entry = {'filename' : temp_filename, 'file_and_dir':file_and_dir}
+                button_view = ButtonView(ctx,name_and_search_type,file_entry)
                 await ctx.followup.send(file=file, embed=embed , view=button_view)
+                file.close()
                 # Enable the button after 1 second
                 await button_view.enable_after_delay()
-                file.close()
-                #Prevent deleting no_cover.jpg
-                if temp_filename != "no_cover.jpg":
-                    delete_temp_file(temp_filename)
             else:
                 embed = discord.Embed(title=title, description=description, color=0x7289da,url=f'https://mangadex.org/manga/{id}')
                 embed.add_field(name="Typ", value=str(series_type), inline=False)
                 embed.add_field(name="Alt Title", value=alt_title, inline=False)
-                button_view = ButtonView(ctx)
+                name_and_search_type = [name,"manga"]
+                button_view = ButtonView(ctx,name_and_search_type)
                 await ctx.followup.send(embed = embed, view=button_view) 
                 # Enable the button after 1 second
                 await button_view.enable_after_delay()
@@ -252,7 +245,6 @@ async def mangadex(ctx, name):
 #delete temp image
 def delete_temp_file(temp_filename)-> None:
     file_and_dir = os.path.join(temp_images_directory,temp_filename)
-    time.sleep(5)
     try:
         os.remove(file_and_dir)
         print(f"Temporary file {temp_filename} deleted.")
@@ -262,14 +254,22 @@ def delete_temp_file(temp_filename)-> None:
 #download image for thumbnail
 def download_image(url, temp_filename) -> bool:
     file_and_dir = os.path.join(temp_images_directory,temp_filename)
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(file_and_dir, 'wb') as f:
-            f.write(response.content)
-        f.close() # Close the file explicitly
-        response.close()  # Close the response explicitly
-        return True
+    if os.path.exists(file_and_dir) and os.path.isfile(file_and_dir):
+            print(f'The file {file_and_dir} does already exist.')
+            return True
+    elif os.path.exists(temp_images_directory):
+        response = requests.get(url)
+        if response.status_code == 200:
+                with open(file_and_dir, 'wb') as f:
+                    f.write(response.content)
+                f.close() # Close the file explicitly
+                response.close()  # Close the response explicitly
+                return True
+        else:
+            print(f'The request for "{url}" denied!')
+            return False
     else:
+        print(f'The path {file_and_dir} does not exist.')
         return False
 
 
@@ -297,14 +297,18 @@ def change_filename_ending(temp_filename,url) -> str:
     
 class ButtonView(discord.ui.View):
 
-    def __init__(self,ctx):
+    def __init__(self,ctx,name_and_search_type,file_entry = []):
         super().__init__(timeout=None)
         self.ctx = ctx
+        self.filename = []
+        self.file_path = []
+        self.get_filenames_and_files(file_entry)
+        self.name = name_and_search_type[0]
+        self.search_type = name_and_search_type[1]
 
     async def on_timeout(self):
         if self is not None:
             await self.message.edit(view=None)
-        
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.user != self.ctx.author:
@@ -319,6 +323,16 @@ class ButtonView(discord.ui.View):
             if isinstance(child, discord.ui.Button):
                 child.disabled = False
         await self.message.edit(view=self)
+    
+    def delete_files(self):
+        #Prevent deleting no_cover.jpg
+        if self.filename[0] != "no_cover.jpg":
+            delete_temp_file(self.filename[0])
+    
+    def get_filenames_and_files(self,file_entry):
+        if file_entry != []:
+            self.filename.append(file_entry['filename'])
+            self.file_path.append(file_entry['file_and_dir'])
         
 
     @discord.ui.button(label="Correct", style=discord.ButtonStyle.green, emoji="✅", custom_id="button_correct", disabled=True)
@@ -327,28 +341,78 @@ class ButtonView(discord.ui.View):
         if interaction.message.embeds[0]:
             await interaction.response.send_message(embed=interaction.message.embeds[0])
         await original_message.delete()
+        if self.file_path != []:
+            self.delete_files()
+        self.stop()
 
     @discord.ui.button(label="Search", style=discord.ButtonStyle.primary, emoji="🔍", custom_id="button_search", disabled=True)
     async def button_search(self,button,interaction):
-        await interaction.response.send_message("Hello")
+        original_message = interaction.message
+
+        #If manga
+        if self.search_type.lower() == "manga":
+            await interaction.response.defer()
+            entries = await search_entries_mangadex(self.name)
+            shorten_embeds,complete_embeds,file_entries = await shorten_and_complete_embed_searchresults_mangadex(entries)
+            await paginate_search(interaction,self.ctx,shorten_embeds,complete_embeds,file_entries,defer=True)
+
+        #Is anime
+        elif self.search_type.lower() == "anime":
+            entries = await search_entries_anilist(self.name)
+            shorten_embeds,complete_embeds = await shorten_and_complete_embed_searchresults_anilist(entries)
+            await paginate_search(interaction,self.ctx,shorten_embeds,complete_embeds,defer=False)
+        else:
+            await interaction.response.send_message("No corresponding type found.", ephemeral= True ,delete_after=20)
+        await original_message.delete()
 
     @discord.ui.button(label="Dismiss", style=discord.ButtonStyle.red, emoji="✖️", custom_id="button_dismiss", disabled=True)
     async def button_dismiss(self,button,interaction):
         original_message = interaction.message
         await interaction.response.send_message("Search deleted." ,ephemeral= True ,delete_after=20)
         await original_message.delete()
+        if self.file_path != []:
+            self.delete_files()
+        self.stop()
 
 
 class PaginatorView(discord.ui.View):
-    def __init__(self, ctx, data):
+    def __init__(self, ctx, shorten_data, complete_data, file_entries = []):
         super().__init__(timeout=None)
         self.ctx = ctx
-        self.data = data
+        self.data = shorten_data
+        self.complete_data = complete_data
+        self.filenames = []
+        self.file_paths = []
+        self.get_filenames_and_files(file_entries)
         self.current_page = 0
+        self.prev_button = self.get_prev_button()
+        self.next_button = self.get_next_button()
+        self.check_for_enabled_buttons()
 
     async def on_timeout(self):
         if self is not None:
             await self.message.edit(view=None)
+
+    def check_for_enabled_buttons(self):
+        #Disable Buttons that can not be used
+        if len(self.data)-1 > 0:
+            self.get_next_button().disabled = False
+
+    def get_filenames_and_files(self,file_entries):
+        if file_entries != []:
+            for file_entry in file_entries:
+                self.filenames.append(file_entry['filename'])
+                self.file_paths.append(file_entry['file_and_dir'])
+
+
+    def delete_files(self):
+        # for file in self.files:
+        #     file.close()
+        
+        for filename in self.filenames:
+            # Prevent deleting no_cover.jpg
+            if filename != "no_cover.jpg":
+                delete_temp_file(filename)
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.user != self.ctx.author:
@@ -358,32 +422,322 @@ class PaginatorView(discord.ui.View):
 
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, emoji="✅", custom_id="button_accept_paginator", disabled=False)
     async def accept_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.send_message(embed=self.data[self.current_page], view=None)
-        await self.message.delete()
+        if self.file_paths != [] and self.file_paths[self.current_page]:
+            file = discord.File(self.file_paths[self.current_page])
+            await interaction.response.send_message(file=file ,embed=self.complete_data[self.current_page], view=None)
+            await self.message.delete()
+        else:
+            await interaction.response.send_message(embed=self.complete_data[self.current_page], view=None)
+            await self.message.delete()
 
-    @discord.ui.button(label="Prev",style=discord.ButtonStyle.primary, custom_id="button_prev_paginator", disabled=False)
+        if self.file_paths != []:
+            self.delete_files()
+        self.stop()
+
+    @discord.ui.button(label="Prev",style=discord.ButtonStyle.primary, custom_id="button_prev_paginator", disabled=True)
     async def prev_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.current_page = max(0, self.current_page - 1)
+        await self.update_buttons()
         await self.update_message(interaction)
+        
 
-    @discord.ui.button(label="Next",style=discord.ButtonStyle.primary, custom_id="button_next_paginator", disabled=False)
+    @discord.ui.button(label="Next",style=discord.ButtonStyle.primary, custom_id="button_next_paginator", disabled=True)
     async def next_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.current_page = min(len(self.data) - 1, self.current_page + 1)
+        await self.update_buttons()
         await self.update_message(interaction)
+        
 
     @discord.ui.button(label="Dismiss", style=discord.ButtonStyle.red, emoji="✖️", custom_id="button_dismiss_paginator", disabled=False)
     async def dismiss_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.send_message("Paginator dismissed.", ephemeral=True)
+        await interaction.response.send_message("Paginator dismissed.", ephemeral=True, delete_after=20)
         await self.message.delete()
+        if self.file_paths != []:
+            self.delete_files()
+        self.stop()
+        
 
     async def update_message(self,interaction):
         await interaction.response.defer()
         embed = self.data[self.current_page]
-        await self.message.edit(embed=embed)
+        if self.file_paths != [] and self.file_paths[self.current_page]:
+            file = discord.File(self.file_paths[self.current_page])
+            await self.message.edit(file = file, embed=embed,view=self)
+            file.close()
+        else:
+            await self.message.edit(embed=embed,view=self)
 
 
-#Paginate the embedlist data
-async def paginate_search(ctx,data):
-    paginator_view = PaginatorView(ctx, data)
-    message = await ctx.respond(embed=data[0], view=paginator_view)
-    paginator_view.message = message
+
+    async def update_buttons(self):
+        #Disable Buttons that can not be used
+        if len(self.data)-1 == 0: 
+            self.prev_button.disabled = True
+            self.next_button.disabled = True
+        elif self.current_page == 0:
+            self.prev_button.disabled = True
+            self.next_button.disabled = False
+        elif self.current_page == len(self.data)-1: 
+            self.prev_button.disabled = False
+            self.next_button.disabled = True
+        else:
+            self.prev_button.disabled = False
+            self.next_button.disabled = False
+        await self.message.edit(view=self)
+
+
+    def get_prev_button(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button) and child.custom_id == "button_prev_paginator":
+                return child
+        return None
+
+    def get_next_button(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button) and child.custom_id == "button_next_paginator":
+                return child
+        return None
+
+
+#Paginate the shorten_embeds
+async def paginate_search(interaction,ctx,shorten_embeds,complete_embeds,file_entries = [], defer = False):
+    if file_entries != []:
+        if defer:
+            paginator_view = PaginatorView(ctx, shorten_embeds,complete_embeds,file_entries)
+            file = discord.File(file_entries[0]['file_and_dir'])
+            message = await interaction.followup.send(file = file,embed=shorten_embeds[0], view=paginator_view)
+            paginator_view.message = message
+            file.close()
+        else:
+            paginator_view = PaginatorView(ctx, shorten_embeds,complete_embeds,file_entries)
+            file = discord.File(file_entries[0]['file_and_dir'])
+            message = await interaction.response.send_message(file = file,embed=shorten_embeds[0], view=paginator_view)
+            paginator_view.message = message
+            file.close()
+    else:
+        if defer:
+            paginator_view = PaginatorView(ctx, shorten_embeds,complete_embeds)
+            message = await interaction.followup.send(embed=shorten_embeds[0], view=paginator_view)
+            paginator_view.message = message
+        else:
+            paginator_view = PaginatorView(ctx, shorten_embeds,complete_embeds)
+            message = await interaction.response.send_message(embed=shorten_embeds[0], view=paginator_view)
+            paginator_view.message = message
+    
+
+async def search_entries_mangadex(title):
+    #Using mangadex api for Webtoon and Manga
+    base_url = "https://api.mangadex.org"
+    max_entries = 5
+    manga_params = {"title": title, **final_order_query}
+    mangadex_response = requests.get(f"{base_url}/manga", params=manga_params)
+    has_thumbnail:  bool = False
+    
+    if mangadex_response.status_code == 200:
+        mangadex_data = mangadex_response.json()["data"]
+        if mangadex_data:
+            max_amout_of_entries = min(max_entries, len(mangadex_data))
+            manga_entries = []
+            for x in range(max_amout_of_entries):
+                if mangadex_data[x]:
+                    manga_info = mangadex_data[x]
+                    id = manga_info['id']
+                    cover_id = [rel['id'] for rel in manga_info['relationships'] if rel.get('type') == 'cover_art'][0]
+                    series_type = manga_info['type'].capitalize()
+                    title = manga_info['attributes']['title']['en']
+
+                    #Add alternative titles
+                    alt_title=''
+                    alt_titles_en = [title["en"] for title in manga_info["attributes"]["altTitles"] if "en" in title]
+                    alt_titles_ja_ro = [title["ja-ro"] for title in manga_info["attributes"]["altTitles"] if "ja-ro" in title]
+
+
+                    for x in range(len(alt_titles_en)):
+                        alt_title += alt_titles_en[x] + "\n"
+                    for y in range(len(alt_titles_ja_ro)):
+                        alt_title += alt_titles_ja_ro[y] + "\n"
+
+                    description = manga_info["attributes"]["description"]["en"]
+                    #Try finding cover_art over cover_id
+                    mangadex_response_cover = requests.get(f"{base_url}/cover/{cover_id}")
+                        
+                    if mangadex_response_cover.status_code == 200:
+                        manga_cover_filename = mangadex_response_cover.json()["data"]['attributes']['fileName']
+                        cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}.512.jpg"
+                        temp_filename = manga_cover_filename
+                        temp_filename = change_filename_ending(temp_filename,cover_image_url)
+                        if download_image(cover_image_url, temp_filename):
+                            print("Thumbnail downloaded")
+                            has_thumbnail = True
+                        else:
+                            print("Thumbnail could not be downloaded")
+                            has_thumbnail = False
+                            
+                    else:
+                        #Try finding cover_art with include extension of mangadex
+                        mangadex_response_cover = requests.get(f"{base_url}/manga/{id}?includes[]=cover_art")
+                        
+                        if mangadex_response_cover.status_code == 200:
+                            mangadex_data = mangadex_response_cover.json()["data"]
+                            manga_cover_filename = [rel['attributes']['fileName'] for rel in mangadex_data['relationships'] if rel.get('type') == 'cover_art'][0]
+                            cover_image_url = f"https://uploads.mangadex.org/covers/{id}/{manga_cover_filename}.512.jpg"
+                            temp_filename = manga_cover_filename
+                            temp_filename = change_filename_ending(temp_filename,cover_image_url)
+                            file_and_dir = os.path.join(temp_images_directory,temp_filename)
+                            if download_image(cover_image_url, temp_filename):
+                                print("Thumbnail downloaded")
+                                has_thumbnail = True
+                            else:
+                                print("Thumbnail could not be downloaded")
+                                has_thumbnail = False
+                                temp_filename = 'no_cover.jpg'
+                                print("Using filler thumbnail")
+
+                        else:
+                            #No cover found: filler image
+                            #no_cover.jpg needs to be in the root folder of the bot
+                            temp_filename = 'no_cover.jpg'
+                            print("Using filler thumbnail")
+
+                    file_and_dir = os.path.join(temp_images_directory,temp_filename)
+                    if alt_titles_ja_ro:
+                        manga = {'id': id,'format': series_type, 'romaji_title': alt_titles_ja_ro[0], 'english_title': title, 'description': description, 'file_and_dir': file_and_dir , 'filename': temp_filename , 'has_thumbnail': has_thumbnail}
+                        manga_entries.append(manga)
+                    else:
+                        manga = {'id': id,'format': series_type, 'romaji_title': '', 'english_title': title, 'description': description, 'file_and_dir': file_and_dir , 'filename': temp_filename , 'has_thumbnail': has_thumbnail}
+                        manga_entries.append(manga)
+                    
+            return manga_entries
+        else:
+            print(f"No information found for '{title}' on MangaDex")
+            return []
+    else:
+        print("Error accessing MangaDex API")
+        return []
+
+async def search_entries_anilist(title):
+    query = '''
+    query ($id: Int, $page: Int, $perPage: Int, $search: String) {
+        Page (page: $page, perPage: $perPage) {
+            media (id: $id, search: $search , type: ANIME) {
+                id
+                title {
+                    romaji
+                    english
+                }
+                format
+                description
+                coverImage {
+                    extraLarge
+                }
+            }
+        }
+    }
+    '''
+
+    variables = {
+    'search': title,
+    'type' : "ANIME",
+    'page': 1,
+    'perPage': 10
+    }
+
+    url = 'https://graphql.anilist.co'
+
+    response = requests.post(url, json={'query': query, 'variables': variables})
+    # Check if the request was successful (status code 200)
+    if response.status_code == 200:
+        data = response.json()
+        animes = data["data"]["Page"]["media"]
+        # Check if any media was found in the response
+        if animes:
+            anime_entries = []
+            for anime_info in animes:
+                anime_id = anime_info["id"]
+                anime_format = anime_info["format"]
+                romaji_title = anime_info['title']['romaji']
+                english_title = anime_info['title']['english']
+                description = anime_info["description"]
+                cover_image_url = anime_info['coverImage']['extraLarge']
+                
+                anime = {'id': anime_id,'format': anime_format, 'romaji_title': romaji_title, 'english_title': english_title, 'description': description, 'cover_image_url': cover_image_url}
+                anime_entries.append(anime)
+            return anime_entries
+    # If something went wrong or no matching media found, return None
+    return []
+
+# data is a list of entries with id,format,romaji_title,english_title,description,cover_image_url
+async def shorten_and_complete_embed_searchresults_anilist(data):
+    shorten_embeded_data = []
+    complete_embed_data = []
+    for entry in data:
+        series_type = "Anime"
+        if entry:
+            #Correct formationg of series_type
+            if entry['format']:
+                #Special case of the name One-Shot
+                if entry['format'].lower() == "one_shot":
+                    format_correct = "One-Shot"
+                else:
+                    format_correct = entry['format'][0].upper() + entry['format'][1:].lower()
+
+                series_type += "/"+ format_correct
+
+            description_markdown = markdownify.markdownify(entry['description'])
+
+            shorten_embed = discord.Embed(title=entry['english_title'], color=0x7289da, url=f"https://anilist.co/anime/{entry['id']}")
+            shorten_embed.add_field(name="Typ", value=str(series_type), inline=False)
+            shorten_embed.add_field(name="Romaji Title", value=entry['romaji_title'], inline=False)
+            shorten_embed.set_thumbnail(url=entry['cover_image_url'])
+            shorten_embeded_data.append(shorten_embed)
+
+            complete_embed = discord.Embed(title=entry['english_title'], description=description_markdown, color=0x7289da, url=f"https://anilist.co/anime/{entry['id']}")
+            complete_embed.add_field(name="Typ", value=str(series_type), inline=False)
+            complete_embed.add_field(name="Romaji Title", value=entry['romaji_title'], inline=False)
+            complete_embed.set_thumbnail(url=entry['cover_image_url'])
+            complete_embed_data.append(complete_embed)
+        else:
+            print(f"No entry found!")
+    return shorten_embeded_data ,complete_embed_data
+
+# data is a list of entries with id,format,romaji_title,english_title,description,cover_image_url
+async def shorten_and_complete_embed_searchresults_mangadex(data):
+    shorten_embeded_data = []
+    complete_embed_data = []
+    file_entries = []
+    for entry in data:
+        #Using Anilist API for Anime
+        if entry:
+            #Correct formationg of series_type
+            if entry['format']:
+                series_type = entry['format']
+            else:
+                series_type = "Manga"
+
+            #Do not need to check for no image because if no image the default 'no_cover.jpg' will be taken
+            file_and_dir = entry['file_and_dir']
+            
+            #file = discord.File(file_and_dir)
+
+            filename = entry['filename']
+            id = entry['id']
+            shorten_embed = discord.Embed(title=entry['english_title'], color=0x7289da,url=f'https://mangadex.org/manga/{id}')
+            shorten_embed.add_field(name="Typ", value=str(series_type), inline=False)
+            if entry['romaji_title'] != '':
+                shorten_embed.add_field(name="Alt Title", value=entry['romaji_title'], inline=False)
+            
+            shorten_embed.set_thumbnail(url=f'attachment://{filename}')
+            shorten_embeded_data.append(shorten_embed)
+
+            complete_embed = discord.Embed(title=entry['english_title'], description=entry['description'], color=0x7289da,url=f'https://mangadex.org/manga/{id}')
+            complete_embed.add_field(name="Typ", value=str(series_type), inline=False)
+            if entry['romaji_title'] != '':
+                complete_embed.add_field(name="Alt Title", value=entry['romaji_title'], inline=False)
+            complete_embed.set_thumbnail(url=f'attachment://{filename}')
+            complete_embed_data.append(complete_embed)
+
+            file_entry = { 'filename': filename, 'file_and_dir': file_and_dir}
+            file_entries.append(file_entry)
+        else:
+            print(f"No entry found!")
+    return shorten_embeded_data,complete_embed_data,file_entries
