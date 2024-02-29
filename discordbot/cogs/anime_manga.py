@@ -610,6 +610,13 @@ async def delete_after_delay(interaction_or_ctx,message, deletion_time = 180 , v
             # Wait for 1 second
         await asyncio.sleep(1)
 
+    #Clear files if necessary
+    if isinstance(view , PaginatorView):
+        if view.file_paths != []:
+            view.delete_files()
+    elif isinstance(view , ButtonView):
+        if view.file_path != []:
+            view.delete_files()
 
     if message.id in scheduled_deletions:
         try:
