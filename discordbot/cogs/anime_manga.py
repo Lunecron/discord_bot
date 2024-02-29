@@ -596,7 +596,6 @@ class PaginatorView(discord.ui.View):
 #Function to delete messages after a delay (delete on timeout), default deletion time 180 = 3min
 async def delete_after_delay(interaction_or_ctx,message, deletion_time = 180 , view = None):
     for remaining_time in range(deletion_time, 0, -1):
-        print(remaining_time)
         if view:
             # Update the button label with the remaining time
             if remaining_time <=60:
