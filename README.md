@@ -1,5 +1,5 @@
 # LuneBot
-**dependences: python3, dotenv, pycord, tmux , more be found in specific the cogs**
+**dependences: python3, dotenv, pycord, tmux , more be found in the specific cogs**
 
 **Description:**
 This repository hosts a private Discord bot implemented in Python, utilizing Discord.py and organized using the concept of cogs. The bot offers simple customization features such as status and activity changes. Additionally, it includes functionality to fetch information from specific websites, with a focus on proxer.me.
