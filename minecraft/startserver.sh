@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # SETTINGS
 # Path to file used to communicate from restart script
 readonly restart_flag='.restart_flag'
@@ -12,9 +10,34 @@ readonly restart_delay=10
 # Accepted values: y/yes/true/n/no/false
 readonly restart_on_crash='yes'
 # The name of your server jar
-readonly server_file='PalServer.sh'
+readonly server_jar='fabric-server-mc.1.20.1-loader.0.15.7-launcher.1.0.0.jar'
+# What will be passed to `-Xms` and `-Xmx`
+readonly heap_size='20G'
+# JVM startup flags, one per line for better readability
+# NOTE: -Xms and -Xmx are set separately
+# These are mostly "Aikar flags"
+# taken from: https://mcflags.emc.gs/
+readonly jvm_flags=(
+ -XX:+UseG1GC 
+ -Dsun.rmi.dgc.server.gcInterval=2147483646 
+ -XX:+UnlockExperimentalVMOptions 
+ -XX:G1NewSizePercent=20 
+ -XX:G1ReservePercent=20 
+ -XX:MaxGCPauseMillis=50 
+ -XX:G1HeapRegionSize=32M 
+ -XX:+ParallelRefProcEnabled 
+ -XX:ParallelGCThreads=8 
+ -XX:ConcGCThreads=2
+)
+# Minecraft args you might want to start your server with
+# Usually there isn't much to configure here:
+readonly mc_args=(
+  --nogui # Start the server without GUI
+)
+# END OF SETTINGS
 
-
+# Save all arguments in an array
+args="$@"
 
 should_restart_on_crash() {
   case "${restart_on_crash,,}" in
@@ -27,8 +50,14 @@ should_restart_on_crash() {
   esac
 }
 
-# Save all arguments in an array
-args="$@"
+# The arguments that will be passed to java:
+readonly java_args=(
+  -Xms"${heap_size}" # Set heap min size
+  -Xmx"${heap_size}" # Set heap max size
+  "${jvm_flags[@]}" # Use jvm flags specified above
+  -jar "${server_jar}" # Run the server
+  "${mc_args[@]}" # And pass it these settings
+)
 
 # Remove restart flag, if it exists,
 # so that we won't restart the server after first stop,
@@ -40,7 +69,7 @@ should_restart_on_crash || true
 
 while :; do # Loop infinitely
   # Run server
-  bash PalServer.sh -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS ${args} || {
+  java "${java_args[@]} ${args}" || {
     # Oops, server didn't exit gracefully
     printf 'Detected server crash (exit code: %s)\n' "${?}" >&2
     # Check if we should restart on crash or not

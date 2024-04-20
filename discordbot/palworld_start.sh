@@ -6,8 +6,11 @@ TARGET_SESSION="Palworld"
 # Path to your script 
 SCRIPT_PATH="/home/steam/.steam/SteamApps/common/PalServer/startserver.sh"
 
-#User to execute command with and command
-#string_to_send = 'sudo -u steam bash -c \"cd \$(dirname \"'$SCRIPT_PATH') && ./\$(basename \'$SCRIPT_PATH')\"'
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+SCRIPT_NAME=$(basename "$SCRIPT_PATH")
+
+# Save all arguments in an array
+args="$@"
 
 # Check if the tmux server is running
 TMUX_PATH=$(which tmux)
@@ -27,4 +30,4 @@ if [ $? != 0 ]; then
 fi
 
 # Send the script command to the tmux session
-tmux send-keys -t $TARGET_SESSION 'sudo -u steam bash -c "cd $(dirname '$SCRIPT_PATH') && ./$(basename '$SCRIPT_PATH')"' C-m
+tmux send-keys -t $TARGET_SESSION "sudo -u steam bash -c 'cd \"$SCRIPT_DIR\" && ./$SCRIPT_NAME ${args}'" C-m

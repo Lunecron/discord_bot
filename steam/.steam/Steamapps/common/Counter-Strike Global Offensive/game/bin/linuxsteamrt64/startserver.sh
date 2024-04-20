@@ -12,7 +12,6 @@ readonly restart_delay=10
 # Accepted values: y/yes/true/n/no/false
 readonly restart_on_crash='yes'
 # The name of your server jar
-readonly server_file='PalServer.sh'
 
 
 
@@ -27,8 +26,17 @@ should_restart_on_crash() {
   esac
 }
 
+
+
+# Check if an argument is provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <map>"
+	echo "Example: $0 +map de_dust2"
+    exit 1
+fi
 # Save all arguments in an array
 args="$@"
+
 
 # Remove restart flag, if it exists,
 # so that we won't restart the server after first stop,
@@ -40,7 +48,7 @@ should_restart_on_crash || true
 
 while :; do # Loop infinitely
   # Run server
-  bash PalServer.sh -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS ${args} || {
+  ./cs2 -dedicated ${args} || {
     # Oops, server didn't exit gracefully
     printf 'Detected server crash (exit code: %s)\n' "${?}" >&2
     # Check if we should restart on crash or not
