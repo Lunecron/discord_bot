@@ -48,7 +48,7 @@ should_restart_on_crash || true
 
 while :; do # Loop infinitely
   # Run server
-  ./cs2 -dedicated ${args} || {
+  ./cs2 -dedicated "${args}" || {
     # Oops, server didn't exit gracefully
     printf 'Detected server crash (exit code: %s)\n' "${?}" >&2
     # Check if we should restart on crash or not

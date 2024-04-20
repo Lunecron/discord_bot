@@ -38,9 +38,16 @@ rm "${restart_flag}" &>/dev/null || true
 # Check if `restart_on_crash` has valid value
 should_restart_on_crash || true
 
+readonly startup_args=(
+  -useperfthreads
+  -NoAsyncLoadingThread
+  -UseMultithreadForDS
+  "${args}" # Additional args which where given as arguments
+)
+
 while :; do # Loop infinitely
   # Run server
-  bash PalServer.sh -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS ${args} || {
+  bash PalServer.sh "${startup_args}" || {
     # Oops, server didn't exit gracefully
     printf 'Detected server crash (exit code: %s)\n' "${?}" >&2
     # Check if we should restart on crash or not

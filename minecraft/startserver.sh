@@ -57,6 +57,7 @@ readonly java_args=(
   "${jvm_flags[@]}" # Use jvm flags specified above
   -jar "${server_jar}" # Run the server
   "${mc_args[@]}" # And pass it these settings
+  "${args}" # Additional args which where given as arguments
 )
 
 # Remove restart flag, if it exists,
@@ -69,7 +70,7 @@ should_restart_on_crash || true
 
 while :; do # Loop infinitely
   # Run server
-  java "${java_args[@]} ${args}" || {
+  java "${java_args[@]}" || {
     # Oops, server didn't exit gracefully
     printf 'Detected server crash (exit code: %s)\n' "${?}" >&2
     # Check if we should restart on crash or not
