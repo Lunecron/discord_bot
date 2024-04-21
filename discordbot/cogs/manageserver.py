@@ -121,10 +121,10 @@ async def check_tmux_servers_embed() -> discord.Embed:
     active_server : int = 0
     for server_name in ServerList.SERVER_NAME.value:
         if server_name in tmux_instances:
-            embed.add_field(name=str(server_name), value="ONLINE", inline=True)
+            embed.add_field(name=str(server_name), value=":green_circle:", inline=True)
             active_server +=1
         else:
-            embed.add_field(name=str(server_name), value="OFFLINE", inline=True)
+            embed.add_field(name=str(server_name), value=":red_circle:", inline=True)
     embed.set_footer(text=f"Online Server : {active_server}")
     return embed
     
