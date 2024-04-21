@@ -38,8 +38,10 @@ class Server(commands.Cog):
     @commands.slash_command(description="Check Server Status")
     async def server_status(self,ctx):
         await ctx.defer()
-        response = await check_tmux_servers()
-        await ctx.followup.send(response)
+        #response = await check_tmux_servers()
+        #await ctx.followup.send(response)
+        embed = await check_tmux_servers_embed()
+        await ctx.followup.send(embed=embed)
         
 
 def setup(bot) -> None:
@@ -111,6 +113,20 @@ async def check_tmux_servers() -> str:
             response += f"{server_name} = offline\n"
 
     return response
+    
+async def check_tmux_servers_embed() -> discord.Embed:
+    tmux_instances = await run_tmux_command()
+
+    embed = discord.Embed(title="Server List", description="84.247.177.135", color=0xffe21a)
+    active_server : int = 0
+    for server_name in ServerList.SERVER_NAME.value:
+        if server_name in tmux_instances:
+            embed.add_field(name=str(server_name), value="ONLINE", inline=True)
+            active_server +=1
+        else:
+            embed.add_field(name=str(server_name), value="OFFLINE", inline=True)
+    embed.set_footer(text=f"Online Server : {active_server}")
+    return embed
     
 async def run_tmux_command():
         try:
