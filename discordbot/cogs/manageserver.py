@@ -4,7 +4,7 @@ import discord
 import asyncio
 import subprocess
 from discord.ext import commands
-from discord.commands import Option
+from discord.commands import Option,SlashCommandGroup
 from discord import default_permissions
 
 #ServerList includes SERVER_NAME, START_SERVER: name of file to start the server, STOP_SERVER: name of file to stop the server
@@ -12,36 +12,53 @@ class ServerList(Enum):
     SERVER_NAME = ['Palworld','Minecraft','CS2']
     START_SERVER = ['palworld_start.sh','minecraft_start.sh','cs2_start.sh']
     STOP_SERVER = ['palworld_stop.sh','minecraft_stop.sh','cs2_stop.sh']
+    UPDATE_SERVER = ['palworld_update.sh','','cs2_update.sh']
 
 class Server(commands.Cog):
+    
+    server = SlashCommandGroup(
+        name="server",
+        description="Server Management",
+        checks=[
+            commands.is_owner().predicate
+        ],  # Ensures the owner_id user can access this group, and no one else
+    )
+   
+    
     def __init__(self,bot):
         self.bot = bot
     
-    @commands.slash_command(description="Start a running Server")
+    @server.command(description="Start a running Server")
     @default_permissions(administrator=True)
-    @commands.has_permissions(administrator=True)
-    async def startserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True),*,  arguments: Option(str, "Enter server arguments", required = False, default = '')):
+    #@server.has_permissions(administrator=True)
+    async def start(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True),*,  arguments: Option(str, "Enter server arguments", required = False, default = '')):
         await ctx.defer()
         result_message = await start_server(server,arguments)
         await ctx.followup.send(result_message)
 
 
-    @commands.slash_command(description="Stop a running server")
+    @server.command(description="Stop a running server")
     @default_permissions(administrator=True)
-    @commands.has_permissions(administrator=True)
-    async def stopserver(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
+    #@server.has_permissions(administrator=True)
+    async def stop(self, ctx, server: Option(str,choices=ServerList.SERVER_NAME.value,required = True)):
         await ctx.defer()
         result_message = await stop_server(server)
         await ctx.followup.send(result_message)
         
     
-    @commands.slash_command(description="Check Server Status")
-    async def server_status(self,ctx):
+    @server.command(description="Check Server Status")
+    async def status(self,ctx):
         await ctx.defer()
         #response = await check_tmux_servers()
         #await ctx.followup.send(response)
         embed = await check_tmux_servers_embed()
         await ctx.followup.send(embed=embed)
+        
+    @server.command(description="Check Server Status")
+    async def update(self, ctx,server: Option(str,choices=ServerList.SERVER_NAME.value,required = True), validate: Option(bool, "Validate Server Files", required = False, default = False)):
+        await ctx.defer()
+        response = await update_server(server,validate)
+        await ctx.followup.send(response)
         
 
 def setup(bot) -> None:
@@ -129,10 +146,42 @@ async def check_tmux_servers_embed() -> discord.Embed:
     return embed
     
 async def run_tmux_command():
-        try:
-            # Get a list of all tmux sessions
-            tmux_list_output = subprocess.check_output(["tmux", "list-sessions"], text=True)
-            return [line.split(":")[0] for line in tmux_list_output.splitlines()]
-        except subprocess.CalledProcessError as e:
-            print(f"Error running tmux command: {e}")
-            return []
+    try:
+        # Get a list of all tmux sessions
+        tmux_list_output = subprocess.check_output(["tmux", "list-sessions"], text=True)
+        return [line.split(":")[0] for line in tmux_list_output.splitlines()]
+    except subprocess.CalledProcessError as e:
+        print(f"Error running tmux command: {e}")
+        return []
+            
+async def update_server(name : ServerList.SERVER_NAME.value, validate : bool) -> str:
+    if name in ServerList.SERVER_NAME.value:
+        index = ServerList.SERVER_NAME.value.index(name)
+        updatefile = ServerList.UPDATE_SERVER.value[index]
+        if updatefile == '':
+                print (f"No updatefile with the name '{updatefile}' found.")
+                return f"No updatefile defined."
+        else:
+            try:                
+                
+                # Run the shell command asynchronously
+                if validate:
+                    process = await asyncio.create_subprocess_exec("sh", str(updatefile), "validate", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                else:
+                    process = await asyncio.create_subprocess_exec("sh", str(updatefile), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout, stderr = await process.communicate()
+
+                # Check if the command was successful
+                if process.returncode == 0:
+                    print (f"Server '{name}' updated successfully!")
+                    return f"Server '{name}' updated successfully!"
+                else:
+                    print (f"Error updating server '{name}': {stderr.decode('utf-8')}")
+                    return f"Error updating server '{name}': {stderr.decode('utf-8')}"
+            except Exception as e:
+                print (f"An error occurred: {str(e)}")
+                return f"An error occurred: {str(e)}"
+    else:
+        print(f"No Server found with {name}")
+        return f"No Server found with {name}"
+    return 
